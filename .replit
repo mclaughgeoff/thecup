@@ -1,4 +1,5 @@
-entrypoint = "npm run dev"
+run = "npm run dev"
+entrypoint = "app/page.tsx"
 
 [nix]
 channel = "stable-24_05"
@@ -6,3 +7,6 @@ channel = "stable-24_05"
 [[ports]]
 localPort = 3000
 externalPort = 80
+
+[env]
+NEXT_TELEMETRY_DISABLED = "1"
