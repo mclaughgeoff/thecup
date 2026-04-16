@@ -1,0 +1,211 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Player {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  name              String
+  nickname          String?
+  handicap          Float
+  photoUrl          String?
+  isAdmin           Boolean   @default(false)
+  inviteSent        Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Travel
+  arrivalDate       DateTime?
+  arrivalTime       String?
+  arrivalAirport    String?
+  arrivalFlight     String?
+  departureDate     DateTime?
+  departureTime     String?
+  departureAirport  String?
+  departureFlight   String?
+
+  // Villa assignment
+  villaId           String?
+  villa             Villa?    @relation(fields: [villaId], references: [id])
+
+  // Availability
+  roundAvailability RoundAvailability[]
+
+  // Teams & Matches
+  teamAssignments   TeamMember[]
+  matches           Match[]         @relation("player1")
+  matches2          Match[]         @relation("player2")
+  matches3          Match[]         @relation("player3")
+  matches4          Match[]         @relation("player4")
+
+  // Scoring
+  scores            Score[]
+
+  // Chat
+  chatMessages      ChatMessage[]
+
+  // Magic links
+  magicLinks        MagicLink[]
+}
+
+model Villa {
+  id        String    @id @default(cuid())
+  name      String
+  address   String
+  capacity  Int       @default(4)
+  players   Player[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Round {
+  id              String    @id @default(cuid())
+  roundNumber     Int       // 1-8
+  date            DateTime
+  dayOfWeek       String    // "Wed", "Thu", "Fri", "Sat", "Sun"
+  timeSlot        String    // "AM" or "PM"
+  course          String    // Course name
+  teeTime         String    // "8:15-8:41 AM" format
+  isRyderCup      Boolean   @default(true)
+  format          String    @default("Foursomes") // Foursomes, Four-ball, Scramble, Skins, etc.
+
+  teams           Team[]
+  groups          Group[]
+  matches         Match[]
+  availabilities  RoundAvailability[]
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([roundNumber])
+}
+
+model RoundAvailability {
+  id        String    @id @default(cuid())
+  playerId  String
+  player    Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  roundId   String
+  round     Round     @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  available Boolean   @default(true)
+
+  @@unique([playerId, roundId])
+}
+
+model Group {
+  id        String    @id @default(cuid())
+  roundId   String
+  round     Round     @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  groupNumber Int     // 1-4 per round
+
+  matches   Match[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([roundId, groupNumber])
+}
+
+model Team {
+  id        String    @id @default(cuid())
+  roundId   String
+  round     Round     @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  teamNumber Int      // 1 or 2
+
+  members   TeamMember[]
+  matches   Match[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([roundId, teamNumber])
+}
+
+model TeamMember {
+  id        String    @id @default(cuid())
+  teamId    String
+  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  playerId  String
+  player    Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, playerId])
+}
+
+model Match {
+  id          String    @id @default(cuid())
+  roundId     String
+  round       Round     @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  groupId     String
+  group       Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  teamId      String
+  team        Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  // Players: 2 or 4 depending on format
+  player1Id   String
+  player1     Player    @relation("player1", fields: [player1Id], references: [id])
+  player2Id   String
+  player2     Player    @relation("player2", fields: [player2Id], references: [id])
+  player3Id   String?
+  player3     Player?   @relation("player3", fields: [player3Id], references: [id])
+  player4Id   String?
+  player4     Player?   @relation("player4", fields: [player4Id], references: [id])
+
+  // Scoring
+  scores      Score[]
+  result      String?   // "Team1 Win 2UP", "Halve", "Team2 Win 3&2", etc.
+  points1     Float?    // Points for team 1
+  points2     Float?    // Points for team 2
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Score {
+  id        String    @id @default(cuid())
+  matchId   String
+  match     Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  playerId  String
+  player    Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  hole      Int       // 1-18
+  strokes   Int
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([matchId, playerId, hole])
+}
+
+model Announcement {
+  id        String    @id @default(cuid())
+  title     String
+  content   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model ChatMessage {
+  id        String    @id @default(cuid())
+  playerId  String
+  player    Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model MagicLink {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  playerId  String
+  player    Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}

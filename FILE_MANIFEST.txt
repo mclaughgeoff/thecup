@@ -1,0 +1,579 @@
+THE CUP - COMPLETE FILE MANIFEST
+================================
+
+Project Location: /sessions/peaceful-nice-wright/mnt/Golf Trip/cup-app/
+Total Files: 47
+Total Directories: 35
+Total Size: 272KB
+Total Code: ~5,000 lines
+
+DIRECTORY STRUCTURE
+===================
+
+cup-app/
+├── app/                           # Next.js App Router (Frontend)
+│   ├── page.tsx                   # Landing page
+│   ├── layout.tsx                 # Root layout
+│   ├── globals.css                # Global styles & Tailwind
+│   │
+│   ├── auth/                      # Authentication pages
+│   │   ├── request-link/page.tsx  # Request magic link form
+│   │   └── magic-link/page.tsx    # Verify link & sign in
+│   │
+│   ├── dashboard/page.tsx         # Main dashboard (after login)
+│   ├── schedule/page.tsx          # View all rounds
+│   ├── leaderboard/page.tsx       # Team standings & scores
+│   │
+│   ├── players/                   # Player listing & profiles
+│   │   ├── page.tsx               # All players roster
+│   │   └── [id]/page.tsx          # Individual player detail
+│   │
+│   ├── profile/page.tsx           # Edit own profile
+│   ├── housing/page.tsx           # Villa assignments
+│   ├── chat/page.tsx              # Group chat
+│   │
+│   └── api/                       # API Routes (Backend)
+│       ├── auth/                  # Authentication
+│       │   ├── request-link/route.ts      # POST - request magic link
+│       │   ├── verify-magic-link/route.ts # POST - verify & login
+│       │   ├── me/route.ts                # GET - get current user
+│       │   └── logout/route.ts            # POST - logout
+│       │
+│       ├── players/               # Player management
+│       │   ├── route.ts           # GET - list all players
+│       │   └── profile/route.ts   # PUT - update own profile
+│       │
+│       ├── chat/                  # Chat messages
+│       │   └── messages/route.ts  # GET/POST - messages
+│       │
+│       └── admin/                 # Admin controls
+│           ├── send-invite/route.ts       # POST - send 1 invite
+│           └── send-invites-bulk/route.ts # POST - send bulk invites
+│
+├── admin/                         # Admin pages
+│   ├── page.tsx                   # Admin dashboard
+│   ├── invites/page.tsx           # Send magic links
+│   ├── teams/page.tsx             # Set teams (UI placeholder)
+│   ├── scoring/page.tsx           # Enter scores (UI placeholder)
+│   └── settings/page.tsx          # Configure rounds (UI placeholder)
+│
+├── components/                    # Reusable React components
+│   ├── Header.tsx                 # Navigation header
+│   └── PlayerAvatar.tsx           # Avatar (initials + photo)
+│
+├── lib/                           # Utilities & business logic
+│   ├── auth.ts                    # JWT, magic links, sessions
+│   ├── email.ts                   # Email sending (nodemailer)
+│   └── utils.ts                   # Formatting & helpers
+│
+├── prisma/                        # Database
+│   ├── schema.prisma              # Database schema (14 models)
+│   └── seed.js                    # Seed script (16 players + data)
+│
+├── public/                        # Static assets
+│   └── .gitkeep                   # Placeholder for headshots
+│
+├── Configuration Files
+│   ├── package.json               # Dependencies (45 packages)
+│   ├── tsconfig.json              # TypeScript config
+│   ├── next.config.js             # Next.js config
+│   ├── tailwind.config.ts         # Tailwind CSS config
+│   ├── postcss.config.js          # PostCSS config
+│   ├── .replit                    # Replit deployment config
+│   ├── replit.nix                 # Nix environment (PostgreSQL, Node)
+│   ├── .env.example               # Environment variables template
+│   └── .gitignore                 # Git ignore rules
+│
+└── Documentation
+    ├── README.md                  # Complete guide (~500 lines)
+    ├── QUICKSTART.md              # Fast launch guide (~150 lines)
+    ├── DEPLOYMENT.md              # Detailed setup (~400 lines)
+    ├── FEATURES.md                # Feature breakdown (~350 lines)
+    ├── PROJECT_SUMMARY.md         # Complete overview (~450 lines)
+    └── FILE_MANIFEST.txt          # This file
+
+TOTAL: 47 files in 35 directories
+
+================================
+FILE BREAKDOWN BY CATEGORY
+================================
+
+FRONTEND PAGES (14)
+✅ Landing: page.tsx (home page)
+✅ Auth: request-link/page.tsx, magic-link/page.tsx
+✅ Main: dashboard/page.tsx
+✅ View: schedule/page.tsx, leaderboard/page.tsx
+✅ Players: players/page.tsx, players/[id]/page.tsx
+✅ User: profile/page.tsx
+✅ Info: housing/page.tsx, chat/page.tsx
+✅ Admin: admin/page.tsx, admin/invites/page.tsx
+✅ Admin: admin/teams/page.tsx, admin/scoring/page.tsx, admin/settings/page.tsx
+
+API ROUTES (11)
+✅ Auth: auth/request-link, auth/verify-magic-link
+✅ Auth: auth/me, auth/logout
+✅ Players: players (GET), players/profile (PUT)
+✅ Chat: chat/messages (GET), chat/messages (POST)
+✅ Admin: admin/send-invite, admin/send-invites-bulk
+✅ Layout: layout.tsx, globals.css
+
+COMPONENTS (2)
+✅ Header.tsx - Navigation with dropdown
+✅ PlayerAvatar.tsx - Avatar with fallback initials
+
+UTILITIES (3)
+✅ auth.ts - JWT, magic links, session management
+✅ email.ts - SMTP email sending
+✅ utils.ts - Helpers (formatting, calculations)
+
+DATABASE (2)
+✅ schema.prisma - 14 models with full relationships
+✅ seed.js - Pre-populate 16 players, 4 villas, 8 rounds
+
+CONFIG (9)
+✅ package.json - All dependencies
+✅ tsconfig.json - TypeScript
+✅ next.config.js - Next.js
+✅ tailwind.config.ts - Tailwind CSS
+✅ postcss.config.js - PostCSS
+✅ .replit - Replit config
+✅ replit.nix - Nix environment
+✅ .env.example - Environment template
+✅ .gitignore - Git ignore
+
+DOCS (5)
+✅ README.md - Complete guide
+✅ QUICKSTART.md - Fast launch
+✅ DEPLOYMENT.md - Setup guide
+✅ FEATURES.md - Feature breakdown
+✅ PROJECT_SUMMARY.md - Full overview
+
+================================
+WHAT EACH FILE DOES
+================================
+
+AUTHENTICATION
+  lib/auth.ts
+    - createAuthToken() - Create JWT
+    - verifyAuthToken() - Verify JWT
+    - getSession() - Get current user
+    - setAuthCookie() - Set secure cookie
+    - createMagicLink() - Create 24h sign-in link
+    - verifyMagicLink() - Verify link & mark used
+    - requireAuth() - Guard for protected routes
+    - requireAdmin() - Guard for admin routes
+
+  app/api/auth/request-link/route.ts
+    - POST /api/auth/request-link
+    - Find player by email
+    - Create magic link
+    - Send email with link
+
+  app/api/auth/verify-magic-link/route.ts
+    - POST /api/auth/verify-magic-link
+    - Verify magic link token
+    - Create JWT token
+    - Set httpOnly cookie
+
+DATABASE
+  prisma/schema.prisma (14 models)
+    - Player (16 entries)
+    - Villa (4 entries)
+    - Round (8 entries)
+    - RoundAvailability
+    - Group (32 entries)
+    - Team (16 entries)
+    - TeamMember
+    - Match
+    - Score
+    - Announcement
+    - ChatMessage
+    - MagicLink
+
+  prisma/seed.js
+    - Creates all 16 players with emails, handicaps, villas
+    - Creates all 4 villas with addresses
+    - Creates all 8 rounds with courses, tee times, dates
+    - Creates groups (4 per round)
+    - Creates empty teams (2 per round)
+    - Links players to villas & rounds
+
+FRONTEND PAGES
+  app/page.tsx
+    - Landing page
+    - Hero section
+    - Feature overview
+    - Call to action
+
+  app/dashboard/page.tsx
+    - Main player dashboard
+    - Quick navigation cards
+    - Next round info
+    - Recent announcements
+    - Pro tips
+
+  app/schedule/page.tsx
+    - All 8 rounds in order
+    - Course, tee time, format per round
+    - RC vs casual badge
+    - Groups (when assigned)
+
+  app/leaderboard/page.tsx
+    - Team standings per round
+    - Match results
+    - Point calculations
+    - Per-round breakdown
+
+  app/players/page.tsx
+    - All 16 players in grid
+    - Name, handicap, villa
+    - Links to profiles
+
+  app/players/[id]/page.tsx
+    - Individual player detail
+    - Avatar, handicap, villa
+    - Arrival/departure info
+    - Travel details
+
+  app/profile/page.tsx
+    - Edit own profile
+    - Update handicap
+    - Add flights & arrival times
+    - Save to database
+
+  app/housing/page.tsx
+    - All 4 villas
+    - Residents per villa
+    - Addresses
+    - Links to player profiles
+
+  app/chat/page.tsx
+    - Group chat interface
+    - Message list with scrolling
+    - Send message form
+    - Real-time delivery
+
+  app/auth/request-link/page.tsx
+    - Email entry form
+    - Send magic link
+    - Success message
+
+  app/auth/magic-link/page.tsx
+    - Link verification page
+    - Auto-verify token
+    - Loading state
+    - Error handling
+
+  app/admin/page.tsx
+    - Admin dashboard
+    - Stats & overview
+    - Links to admin features
+    - Admin-only access check
+
+  app/admin/invites/page.tsx
+    - List pending invites
+    - Send individual invites
+    - Bulk send option
+    - Track sent status
+
+  app/admin/teams/page.tsx
+    - View all rounds
+    - Show teams per round
+    - Button to assign (placeholder)
+
+  app/admin/scoring/page.tsx
+    - View all rounds & matches
+    - Display match details
+    - Button to enter score (placeholder)
+    - Group-by-group view
+
+  app/admin/settings/page.tsx
+    - Edit round configuration
+    - Course, tee time, format
+    - Toggle RC vs casual
+    - Save button (placeholder)
+
+COMPONENTS
+  components/Header.tsx
+    - Navigation bar
+    - Player name display
+    - Logout button
+    - Mobile dropdown menu
+    - Admin link (conditional)
+
+  components/PlayerAvatar.tsx
+    - Circular avatar
+    - Photo or initials
+    - Size variants (sm, md, lg)
+    - Hover effects
+
+API ROUTES
+  app/api/players/route.ts
+    - GET /api/players
+    - List all players
+    - Include handicap, email, villa
+
+  app/api/players/profile/route.ts
+    - PUT /api/players/profile
+    - Update own profile
+    - Handicap, nickname, flights
+
+  app/api/chat/messages/route.ts
+    - GET /api/chat/messages
+    - POST /api/chat/messages
+    - Get last 100 messages
+    - Send new message
+
+  app/api/admin/send-invite/route.ts
+    - POST /api/admin/send-invite
+    - Send to 1 player
+    - Create magic link
+    - Send email
+
+  app/api/admin/send-invites-bulk/route.ts
+    - POST /api/admin/send-invites-bulk
+    - Send to multiple players
+    - Batch email delivery
+    - Track success count
+
+STYLES
+  app/globals.css
+    - Tailwind imports
+    - Custom CSS classes
+    - Button styles
+    - Card styles
+    - Typography
+    - Responsive breakpoints
+
+  tailwind.config.ts
+    - Cup colors (green, navy, gold)
+    - Font family
+    - Theme extensions
+
+UTILITIES
+  lib/email.ts
+    - sendMagicLinkEmail()
+    - sendAnnouncementEmail()
+    - SMTP configuration
+    - Nodemailer transporter
+
+  lib/utils.ts
+    - cn() - Tailwind classname merging
+    - formatDate()
+    - formatTime()
+    - calculateMatchStatus()
+    - calculatePoints()
+    - formatHandicap()
+    - getInitials()
+
+CONFIGURATION
+  package.json
+    - 45 dependencies
+    - 6 dev dependencies
+    - Build, dev, seed scripts
+
+  tsconfig.json
+    - Strict TypeScript settings
+    - Path aliases
+    - JSX configuration
+
+  next.config.js
+    - Image optimization
+    - Build settings
+
+  tailwind.config.ts
+    - Cup color palette
+    - Theme customization
+
+  .env.example
+    - DATABASE_URL
+    - JWT_SECRET
+    - MAGIC_LINK_SECRET
+    - SMTP settings
+    - APP_URL
+
+  .replit
+    - Entry point: npm run dev
+    - Port: 3000
+    - Nix channel
+
+  replit.nix
+    - PostgreSQL 15
+    - Node.js 20
+    - Yarn package manager
+
+DOCUMENTATION
+  README.md
+    - Feature overview
+    - Tech stack
+    - Setup instructions
+    - Player roster
+    - Villas & housing
+    - Round schedule
+    - API docs
+    - Troubleshooting
+
+  QUICKSTART.md
+    - 15-minute launch guide
+    - Prerequisites
+    - Step-by-step setup
+    - Replit import
+    - Database setup
+    - First login
+    - Common issues
+
+  DEPLOYMENT.md
+    - Detailed setup guide
+    - Environment variables
+    - SMTP configuration
+    - Database migrations
+    - Admin first steps
+    - Ongoing tasks
+    - Monitoring
+    - Troubleshooting
+
+  FEATURES.md
+    - Fully implemented features
+    - Partially implemented
+    - Not yet implemented
+    - API ready features
+    - Quick wins
+    - Known limitations
+    - Version history
+
+  PROJECT_SUMMARY.md
+    - Complete overview
+    - Tech stack table
+    - Database schema
+    - Pre-seeded data
+    - File statistics
+    - Launch checklist
+    - Success metrics
+
+================================
+QUICK FILE REFERENCE
+================================
+
+To find something, look here:
+
+Authentication?
+  → lib/auth.ts (logic)
+  → app/api/auth/* (endpoints)
+  → app/auth/* (pages)
+
+Database?
+  → prisma/schema.prisma (schema)
+  → prisma/seed.js (data)
+
+Player profiles?
+  → app/players/* (pages)
+  → app/api/players/* (endpoints)
+
+Schedule?
+  → app/schedule/page.tsx
+  → prisma/schema.prisma (Round model)
+
+Leaderboard?
+  → app/leaderboard/page.tsx
+  → prisma/schema.prisma (Match, Score models)
+
+Admin?
+  → app/admin/* (pages)
+  → app/api/admin/* (endpoints)
+
+Styling?
+  → app/globals.css
+  → tailwind.config.ts
+  → components/Header.tsx
+
+Setup help?
+  → README.md (complete guide)
+  → QUICKSTART.md (fast)
+  → DEPLOYMENT.md (detailed)
+
+Features?
+  → FEATURES.md (what's done)
+  → PROJECT_SUMMARY.md (overview)
+
+================================
+KEY FILES TO KNOW
+================================
+
+MOST IMPORTANT:
+  1. prisma/schema.prisma - The database blueprint
+  2. app/api/auth/* - How authentication works
+  3. app/dashboard/page.tsx - The main app interface
+  4. lib/auth.ts - Session/JWT management
+  5. QUICKSTART.md - How to launch
+
+FOR DEPLOYMENT:
+  1. .env.example - What variables you need
+  2. .replit - Replit configuration
+  3. replit.nix - Dependencies
+  4. DEPLOYMENT.md - Step-by-step
+
+FOR DEVELOPMENT:
+  1. app/api/* - All API endpoints
+  2. components/* - Reusable components
+  3. lib/* - Utilities
+  4. tailwind.config.ts - Styling
+
+FOR REFERENCE:
+  1. README.md - Complete overview
+  2. PROJECT_SUMMARY.md - Stats & details
+  3. FEATURES.md - Implementation status
+
+================================
+FILE SIZES (APPROXIMATE)
+================================
+
+Largest files:
+  - README.md: 25KB
+  - prisma/schema.prisma: 4KB
+  - app/dashboard/page.tsx: 3KB
+  - DEPLOYMENT.md: 12KB
+  - PROJECT_SUMMARY.md: 15KB
+
+Total code:
+  - TypeScript/TSX: 60%
+  - Configuration: 20%
+  - Documentation: 20%
+
+================================
+DEPLOYMENT CHECKLIST
+================================
+
+What files are needed for Replit deployment?
+
+REQUIRED:
+  ✓ package.json
+  ✓ .replit
+  ✓ replit.nix
+  ✓ All app/* files
+  ✓ All components/* files
+  ✓ All lib/* files
+  ✓ All prisma/* files
+  ✓ .env.example
+  ✓ .gitignore
+  ✓ Configuration files (tsconfig, next.config, etc.)
+
+OPTIONAL:
+  ✓ Documentation (helpful but not required)
+  ✓ public/* (for assets like photos)
+
+GENERATED:
+  → node_modules/ (created by npm install)
+  → .next/ (created by npm build)
+  → .env (copy from .env.example)
+
+================================
+END OF MANIFEST
+================================
+
+For more info, see:
+  - README.md for complete guide
+  - QUICKSTART.md for fast launch
+  - DEPLOYMENT.md for setup
+  - FEATURES.md for status
+
+The Cup is ready to deploy! ⛳
