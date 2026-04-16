@@ -82,7 +82,16 @@ export async function verifyMagicLink(token: string): Promise<string | null> {
       where: { token },
     });
 
-    if (!magicLink || magicLink.usedAt || magicLink.expiresAt < new Date()) {
+    if (!magicLink) {
+      console.error('[verifyMagicLink] No matching token in DB');
+      return null;
+    }
+    if (magicLink.usedAt) {
+      console.error('[verifyMagicLink] Token already used at', magicLink.usedAt);
+      return null;
+    }
+    if (magicLink.expiresAt < new Date()) {
+      console.error('[verifyMagicLink] Token expired at', magicLink.expiresAt);
       return null;
     }
 
@@ -93,7 +102,8 @@ export async function verifyMagicLink(token: string): Promise<string | null> {
     });
 
     return decoded.playerId;
-  } catch {
+  } catch (err) {
+    console.error('[verifyMagicLink] jwt.verify or DB error:', err);
     return null;
   }
 }

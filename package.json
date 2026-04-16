@@ -4,14 +4,16 @@
   "description": "The Cup - Annual Ryder Cup Golf Trip App",
   "private": true,
   "scripts": {
-    "dev": "prisma db push --accept-data-loss && next dev -H 0.0.0.0 -p 3000",
+    "dev": "next dev",
     "build": "prisma generate && next build",
-    "start": "next start -H 0.0.0.0 -p 3000",
+    "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "node prisma/seed.js",
+    "prisma:studio": "prisma studio",
     "db:setup": "prisma db push && npm run prisma:seed"
   },
   "dependencies": {

@@ -18,6 +18,16 @@ export async function sendMagicLinkEmail(
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const loginUrl = `${appUrl}/auth/magic-link?token=${magicLink}`;
 
+  // Dev fallback: if SMTP isn't configured, print the link to the server console
+  // instead of attempting to send (which would fail silently).
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`🔗 Magic link for ${playerName} <${email}>:`);
+    console.log(loginUrl);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    return;
+  }
+
   const htmlContent = `
     <h2>Welcome to The Cup, ${playerName}!</h2>
     <p>Click the link below to sign in to your account:</p>
