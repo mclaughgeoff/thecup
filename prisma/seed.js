@@ -3,22 +3,22 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 const PLAYERS = [
-  { email: 'luceca8@gmail.com', name: 'Charlie Luce', handicap: 18.9, villa: '926 Cutter Court' },
-  { email: 'David.Goldberg@jll.com', name: 'DJ Goldberg', handicap: 5.3, villa: '926 Cutter Court' },
-  { email: 'andrewjdresser@gmail.com', name: 'Drew Dresser', handicap: 18.1, villa: '926 Cutter Court' },
-  { email: 'mclaughlingeoffrey@gmail.com', name: 'Geoff McLaughlin', handicap: 16.6, villa: '828 Ketch Court', isAdmin: true },
-  { email: 'grteclark@gmail.com', name: 'Graham Clark', handicap: 19, villa: '910 Cutter Court' },
-  { email: 'John.cappellucci.1@gmail.com', name: 'John Cappellucci', handicap: 24, villa: '910 Cutter Court' },
-  { email: 'kfwalsh12@gmail.com', name: 'Kevin Walsh', handicap: 14, villa: '926 Cutter Court' },
-  { email: 'barnesliamb@gmail.com', name: 'Liam Barnes', handicap: 16, villa: '828 Ketch Court' },
-  { email: 'paul.cappellucci@gmail.com', name: 'Paul Cappellucci', handicap: 10.4, villa: '910 Cutter Court' },
-  { email: 'rjnicholas2@gmail.com', name: 'Ryan Nicholas', handicap: 10, villa: '828 Ketch Court' },
-  { email: 'steven2434@gmail.com', name: 'Steve Saltzman', handicap: 28, villa: '910 Cutter Court' },
-  { email: 'scollura123@gmail.com', name: 'Steve Collura', handicap: 7, villa: '865 Ketch Court' },
-  { email: 'syng5201@gmail.com', name: 'Syng Yu', handicap: 19, villa: '865 Ketch Court' },
-  { email: 'tyben20@gmail.com', name: 'Tyler Bennett', handicap: 12.6, villa: '865 Ketch Court' },
-  { email: 'abe.guillen87@gmail.com', name: 'Abe Guillen', handicap: 16.6, villa: '865 Ketch Court' },
-  { email: 'davidjromanow@gmail.com', name: 'Dave Romanow', handicap: 15, villa: '828 Ketch Court' },
+  { email: 'luceca8@gmail.com', name: 'Charlie Luce', handicap: 18.9, villa: '926 Cutter Court', photoUrl: '/headshots/charlie-luce.jpg' },
+  { email: 'David.Goldberg@jll.com', name: 'DJ Goldberg', handicap: 5.3, villa: '926 Cutter Court', photoUrl: '/headshots/dj-goldberg.jpg' },
+  { email: 'andrewjdresser@gmail.com', name: 'Drew Dresser', handicap: 18.1, villa: '926 Cutter Court', photoUrl: '/headshots/drew-dresser.jpg' },
+  { email: 'mclaughlingeoffrey@gmail.com', name: 'Geoff McLaughlin', handicap: 16.6, villa: '828 Ketch Court', isAdmin: true, photoUrl: '/headshots/geoff-mclaughlin.jpg' },
+  { email: 'grteclark@gmail.com', name: 'Graham Clark', handicap: 19, villa: '910 Cutter Court', photoUrl: '/headshots/graham-clark.jpg' },
+  { email: 'John.cappellucci.1@gmail.com', name: 'John Cappellucci', handicap: 24, villa: '910 Cutter Court', photoUrl: '/headshots/john-cappellucci.jpg' },
+  { email: 'kfwalsh12@gmail.com', name: 'Kevin Walsh', handicap: 14, villa: '926 Cutter Court', photoUrl: '/headshots/kevin-walsh.jpg' },
+  { email: 'barnesliamb@gmail.com', name: 'Liam Barnes', handicap: 16, villa: '828 Ketch Court', photoUrl: '/headshots/liam-barnes.jpg' },
+  { email: 'paul.cappellucci@gmail.com', name: 'Paul Cappellucci', handicap: 10.4, villa: '910 Cutter Court', photoUrl: '/headshots/paul-cappellucci.jpg' },
+  { email: 'rjnicholas2@gmail.com', name: 'Ryan Nicholas', handicap: 10, villa: '828 Ketch Court', photoUrl: '/headshots/ryan-nicholas.jpg' },
+  { email: 'steven2434@gmail.com', name: 'Steve Saltzman', handicap: 28, villa: '910 Cutter Court', photoUrl: '/headshots/steve-saltzman.jpg' },
+  { email: 'scollura123@gmail.com', name: 'Steve Collura', handicap: 7, villa: '865 Ketch Court', photoUrl: '/headshots/steve-collura.jpg' },
+  { email: 'syng5201@gmail.com', name: 'Syng Yu', handicap: 19, villa: '865 Ketch Court', photoUrl: '/headshots/syng-yu.jpg' },
+  { email: 'tyben20@gmail.com', name: 'Tyler Bennett', handicap: 12.6, villa: '865 Ketch Court', photoUrl: '/headshots/tyler-bennett.jpg' },
+  { email: 'abe.guillen87@gmail.com', name: 'Abe Guillen', handicap: 16.6, villa: '865 Ketch Court', photoUrl: '/headshots/abe-guillen.jpg' },
+  { email: 'davidjromanow@gmail.com', name: 'Dave Romanow', handicap: 15, villa: '828 Ketch Court', photoUrl: '/headshots/dave-romanow.jpg' },
 ];
 
 const VILLAS = [
@@ -73,6 +73,7 @@ async function main() {
           handicap: player.handicap,
           isAdmin: player.isAdmin || false,
           villaId: villa?.id,
+          photoUrl: player.photoUrl,
         },
       });
     })
