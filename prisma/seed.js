@@ -177,8 +177,6 @@ const RYDER_CUP_TEAMS = [
 // --- Format library ---
 const FORMATS = [
   { slug: 'four-ball-match',    name: 'Four-Ball (Best Ball) Match Play',           teamSize: 2, scoringType: 'match',      teamScoringMode: 'best_ball',      handicapCombine: 'per_player',   defaultAllowance:  85, strokeEntryMode: 'per_player', sortOrder: 10, description: 'Partners play their own balls; only the lowest score per team counts per hole.' },
-  { slug: 'foursomes',          name: 'Foursomes (Alternate Shot)',                 teamSize: 2, scoringType: 'match',      teamScoringMode: 'alternate_shot', handicapCombine: 'combined_sum', defaultAllowance:  50, strokeEntryMode: 'per_side',   sortOrder: 20, description: 'One ball per side; partners alternate shots until holed.' },
-  { slug: 'modified-foursomes', name: 'Modified Foursomes (Modified Alternate Shot)', teamSize: 2, scoringType: 'match',    teamScoringMode: 'alternate_shot', handicapCombine: 'combined_sum', defaultAllowance:  50, strokeEntryMode: 'per_side',   sortOrder: 30, description: 'Both partners tee off, pick the best drive, then alternate shots.' },
   { slug: 'singles-match',      name: 'Singles Match Play',                         teamSize: 1, scoringType: 'match',      teamScoringMode: 'individual',     handicapCombine: 'per_player',   defaultAllowance: 100, strokeEntryMode: 'per_player', sortOrder: 40, description: 'Head-to-head: one player per side.' },
   { slug: 'two-man-scramble',   name: 'Two-Man Scramble',                           teamSize: 2, scoringType: 'match',      teamScoringMode: 'scramble',       handicapCombine: 'combined_sum', defaultAllowance:  35, strokeEntryMode: 'per_side',   sortOrder: 50, description: 'Both partners tee off, pick the best shot, all play from there.' },
   { slug: 'four-man-scramble',  name: 'Four-Man Scramble',                          teamSize: 4, scoringType: 'stroke',     teamScoringMode: 'scramble',       handicapCombine: 'combined_sum', defaultAllowance:  20, strokeEntryMode: 'per_side',   sortOrder: 60, description: 'All four partners tee off, pick the best shot, all play from there.' },
@@ -189,7 +187,7 @@ const FORMATS = [
 
 // Map the existing seeded Round.format string to a Format slug for the initial link.
 const ROUND_FORMAT_SLUG = {
-  'Foursomes':  'foursomes',
+  'Foursomes':  'four-ball-match',
   'Four-ball':  'four-ball-match',
   'Scramble':   'four-man-scramble',
   'Singles':    'singles-match',

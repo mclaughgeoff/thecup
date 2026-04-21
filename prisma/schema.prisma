@@ -60,6 +60,9 @@ model Player {
 
   // Web push
   pushSubscriptions PushSubscription[]
+
+  // Matches this player has overridden as admin
+  matchOverrides    Match[]             @relation("MatchOverrides")
 }
 
 model Villa {
@@ -182,6 +185,23 @@ model Match {
   pointsA     Float?   // Points for team A (1, 0.5, or 0)
   pointsB     Float?   // Points for team B
 
+  // Ghost-score difficulty for absent players in this match.
+  // "AUTO" = handicap-scaled smart default
+  // "EASY" = net par everywhere
+  // "STANDARD" = net bogey everywhere
+  // "TOUGH" = net double bogey everywhere
+  ghostDifficulty String @default("AUTO")
+
+  // Admin override: short-circuits computed results for this match.
+  // When any override* field is set, the match result is frozen to these points.
+  overridePointsA Float?
+  overridePointsB Float?
+  overrideLabel   String?   // e.g. "Halved at 16 — rain"
+  overrideNote    String?   // free-text, shown on match detail
+  overriddenAt    DateTime?
+  overriddenById  String?
+  overriddenBy    Player?   @relation("MatchOverrides", fields: [overriddenById], references: [id], onDelete: SetNull)
+
   // Scoring
   scores      Score[]
 
@@ -201,6 +221,12 @@ model MatchPlayer {
   playerId  String
   player    Player  @relation(fields: [playerId], references: [id], onDelete: Cascade)
   side      String  // "A" or "B" — which RC team side they're playing for
+
+  // Three-state absence override.
+  //   null  → Auto (inherit from RoundAvailability for this match's round)
+  //   true  → admin forced Absent
+  //   false → admin forced Present (overrides a stale unavailable flag)
+  absentOverride Boolean?
 
   @@unique([matchId, playerId])
 }
