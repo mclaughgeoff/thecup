@@ -7,6 +7,13 @@ import BottomTabBar from '@/components/BottomTabBar';
 
 interface TeeBox { id: string; name: string; totalYards: number }
 interface Course { id: string; name: string; teeBoxes: TeeBox[] }
+interface Format {
+  id: string;
+  name: string;
+  slug: string;
+  scoringType: string;
+  defaultAllowance: number;
+}
 interface Round {
   id: string;
   roundNumber: number;
@@ -18,6 +25,9 @@ interface Round {
   isRyderCup: boolean;
   activeTeeBox: string | null;
   courseId: string | null;
+  formatId: string | null;
+  handicapAllowance: number | null;
+  scoringType: string | null;
 }
 
 interface Draft {
@@ -27,6 +37,9 @@ interface Draft {
   isRyderCup: boolean;
   courseId: string;
   activeTeeBox: string;
+  formatId: string;
+  handicapAllowance: string; // empty = inherit
+  scoringType: string;       // empty = inherit
   saving: boolean;
   status: 'idle' | 'saved' | 'error';
 }
@@ -37,14 +50,16 @@ export default function AdminRoundsPage() {
   const [loading, setLoading] = useState(true);
   const [rounds, setRounds] = useState<Round[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [formats, setFormats] = useState<Format[]>([]);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
 
   const load = async () => {
     const r = await fetch('/api/admin/rounds');
     if (!r.ok) return;
-    const { rounds: rs, courses: cs } = await r.json();
+    const { rounds: rs, courses: cs, formats: fs } = await r.json();
     setRounds(rs);
     setCourses(cs);
+    setFormats(fs ?? []);
     setDrafts(
       Object.fromEntries(
         rs.map((x: Round) => [
@@ -56,6 +71,9 @@ export default function AdminRoundsPage() {
             isRyderCup: x.isRyderCup,
             courseId: x.courseId ?? '',
             activeTeeBox: x.activeTeeBox ?? '',
+            formatId: x.formatId ?? '',
+            handicapAllowance: x.handicapAllowance == null ? '' : String(x.handicapAllowance),
+            scoringType: x.scoringType ?? '',
             saving: false,
             status: 'idle',
           } as Draft,
@@ -99,6 +117,9 @@ export default function AdminRoundsPage() {
           isRyderCup: d.isRyderCup,
           courseId: d.courseId || null,
           activeTeeBox: d.activeTeeBox || null,
+          formatId: d.formatId || null,
+          handicapAllowance: d.handicapAllowance === '' ? null : Number(d.handicapAllowance),
+          scoringType: d.scoringType || null,
         }),
       });
       if (!res.ok) throw new Error('Save failed');
@@ -172,7 +193,7 @@ export default function AdminRoundsPage() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="label">Format</label>
+                      <label className="label">Format (display)</label>
                       <input
                         type="text"
                         value={d.format}
@@ -194,6 +215,67 @@ export default function AdminRoundsPage() {
                           <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
                       </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="label">Scoring format</label>
+                    <select
+                      value={d.formatId}
+                      onChange={(e) => {
+                        const f = formats.find((x) => x.id === e.target.value);
+                        setDraft(round.id, {
+                          formatId: e.target.value,
+                          // Auto-fill the free-text format label if a real format is picked
+                          format: f?.name ?? d.format,
+                        });
+                      }}
+                      className="input"
+                    >
+                      <option value="">No scoring format</option>
+                      {formats.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.name}
+                        </option>
+                      ))}
+                    </select>
+                    {(() => {
+                      const f = formats.find((x) => x.id === d.formatId);
+                      return f ? (
+                        <p className="text-[10px] text-fg-3 mt-1">
+                          Defaults: {f.scoringType}, {f.defaultAllowance}% handicap. Override below or leave blank to inherit.
+                        </p>
+                      ) : null;
+                    })()}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="label">Scoring type override</label>
+                      <select
+                        value={d.scoringType}
+                        onChange={(e) => setDraft(round.id, { scoringType: e.target.value })}
+                        className="input"
+                        disabled={!d.formatId}
+                      >
+                        <option value="">Inherit</option>
+                        <option value="match">Match Play</option>
+                        <option value="stroke">Stroke Play</option>
+                        <option value="stableford">Stableford</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="label">Handicap % override</label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={d.handicapAllowance}
+                        placeholder="Inherit"
+                        onChange={(e) => setDraft(round.id, { handicapAllowance: e.target.value })}
+                        className="input"
+                        disabled={!d.formatId}
+                      />
                     </div>
                   </div>
 

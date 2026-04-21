@@ -166,6 +166,27 @@ const RYDER_CUP_TEAMS = [
   { name: 'Team Bravo', teamNumber: 2, color: '#003DA5' },
 ];
 
+// --- Format library ---
+const FORMATS = [
+  { slug: 'four-ball-match',    name: 'Four-Ball (Best Ball) Match Play',           teamSize: 2, scoringType: 'match',      teamScoringMode: 'best_ball',      handicapCombine: 'per_player',   defaultAllowance:  85, strokeEntryMode: 'per_player', sortOrder: 10, description: 'Partners play their own balls; only the lowest score per team counts per hole.' },
+  { slug: 'foursomes',          name: 'Foursomes (Alternate Shot)',                 teamSize: 2, scoringType: 'match',      teamScoringMode: 'alternate_shot', handicapCombine: 'combined_sum', defaultAllowance:  50, strokeEntryMode: 'per_side',   sortOrder: 20, description: 'One ball per side; partners alternate shots until holed.' },
+  { slug: 'modified-foursomes', name: 'Modified Foursomes (Modified Alternate Shot)', teamSize: 2, scoringType: 'match',    teamScoringMode: 'alternate_shot', handicapCombine: 'combined_sum', defaultAllowance:  50, strokeEntryMode: 'per_side',   sortOrder: 30, description: 'Both partners tee off, pick the best drive, then alternate shots.' },
+  { slug: 'singles-match',      name: 'Singles Match Play',                         teamSize: 1, scoringType: 'match',      teamScoringMode: 'individual',     handicapCombine: 'per_player',   defaultAllowance: 100, strokeEntryMode: 'per_player', sortOrder: 40, description: 'Head-to-head: one player per side.' },
+  { slug: 'two-man-scramble',   name: 'Two-Man Scramble',                           teamSize: 2, scoringType: 'match',      teamScoringMode: 'scramble',       handicapCombine: 'combined_sum', defaultAllowance:  35, strokeEntryMode: 'per_side',   sortOrder: 50, description: 'Both partners tee off, pick the best shot, all play from there.' },
+  { slug: 'four-man-scramble',  name: 'Four-Man Scramble',                          teamSize: 4, scoringType: 'stroke',     teamScoringMode: 'scramble',       handicapCombine: 'combined_sum', defaultAllowance:  20, strokeEntryMode: 'per_side',   sortOrder: 60, description: 'All four partners tee off, pick the best shot, all play from there.' },
+  { slug: 'bramble',            name: 'Bramble',                                    teamSize: 2, scoringType: 'match',      teamScoringMode: 'scramble',       handicapCombine: 'combined_sum', defaultAllowance:  35, strokeEntryMode: 'per_side',   sortOrder: 70, description: 'Scramble off the tee, then play your own ball.' },
+  { slug: 'net-stableford',     name: 'Net Stableford Points',                      teamSize: 1, scoringType: 'stableford', teamScoringMode: 'individual',     handicapCombine: 'per_player',   defaultAllowance:  95, strokeEntryMode: 'per_player', sortOrder: 80, description: 'Points per hole vs par, adjusted for handicap.' },
+];
+
+// Map the existing seeded Round.format string to a Format slug for the initial link.
+const ROUND_FORMAT_SLUG = {
+  'Foursomes':  'foursomes',
+  'Four-ball':  'four-ball-match',
+  'Scramble':   'four-man-scramble',
+  'Singles':    'singles-match',
+  'Casual':     null,
+};
+
 // --- Meal reservations (from CUP_APP_UPDATE_PLAN.md §3F) ---
 const MEAL_RESERVATIONS = [
   // Lunches
@@ -196,6 +217,7 @@ async function main() {
   await prisma.hole.deleteMany({});
   await prisma.teeBox.deleteMany({});
   await prisma.course.deleteMany({});
+  await prisma.format.deleteMany({});
   await prisma.mealReservation.deleteMany({});
   await prisma.player.deleteMany({});
   await prisma.villa.deleteMany({});
@@ -286,7 +308,15 @@ async function main() {
   }
   console.log(`Created ${COURSES.length} courses with tee boxes & scorecards`);
 
-  // Rounds — link to course where the course name matches a seeded Course
+  // Formats (seed library)
+  const createdFormats = {};
+  for (const f of FORMATS) {
+    const row = await prisma.format.create({ data: f });
+    createdFormats[f.slug] = row;
+  }
+  console.log(`Created ${FORMATS.length} formats`);
+
+  // Rounds — link to course + format
   const roundCourseTeeBox = {
     'Heron Point':    'Dye',
     'Atlantic Dunes': 'Blue',
@@ -295,11 +325,14 @@ async function main() {
   const createdRounds = await Promise.all(
     ROUNDS.map(round => {
       const course = coursesByName[round.course];
+      const formatSlug = ROUND_FORMAT_SLUG[round.format] ?? null;
+      const formatRow = formatSlug ? createdFormats[formatSlug] : null;
       return prisma.round.create({
         data: {
           ...round,
           courseId: course?.id ?? null,
           activeTeeBox: roundCourseTeeBox[round.course] ?? null,
+          formatId: formatRow?.id ?? null,
         },
       });
     })
@@ -322,11 +355,75 @@ async function main() {
   }
   console.log('Created round availability records');
 
-  // Ryder Cup teams (no members — admin assigns via UI)
+  // Ryder Cup teams — seeded with a sample roster so the scoring UI is usable out of the box.
+  // Admin can reshuffle later via /admin/ryder-cup.
+  const SAMPLE_ROSTER = {
+    1: [ // Team Alpha
+      'mclaughlingeoffrey@gmail.com', // Geoff
+      'David.Goldberg@jll.com',       // DJ
+      'andrewjdresser@gmail.com',     // Drew
+      'John.cappellucci.1@gmail.com', // John
+      'kfwalsh12@gmail.com',          // Kevin
+      'paul.cappellucci@gmail.com',   // Paul
+      'steven2434@gmail.com',         // Steve S
+      'tyben20@gmail.com',            // Ty
+    ],
+    2: [ // Team Bravo
+      'luceca8@gmail.com',            // Charlie
+      'grteclark@gmail.com',          // Graham
+      'barnesliamb@gmail.com',        // Liam
+      'rjnicholas2@gmail.com',        // Ryan
+      'scollura123@gmail.com',        // Steve C
+      'syng5201@gmail.com',           // Syng
+      'abe.guillen87@gmail.com',      // Abe
+      'davidjromanow@gmail.com',      // Dave
+    ],
+  };
+  const createdTeams = {};
   for (const team of RYDER_CUP_TEAMS) {
-    await prisma.ryderCupTeam.create({ data: team });
+    const row = await prisma.ryderCupTeam.create({ data: team });
+    createdTeams[team.teamNumber] = row;
+    for (const email of SAMPLE_ROSTER[team.teamNumber] ?? []) {
+      const p = createdPlayers.find(pl => pl.email === email);
+      if (p) {
+        await prisma.ryderCupTeamMember.create({
+          data: { teamId: row.id, playerId: p.id },
+        });
+      }
+    }
   }
-  console.log(`Created ${RYDER_CUP_TEAMS.length} Ryder Cup teams`);
+  console.log(`Created ${RYDER_CUP_TEAMS.length} Ryder Cup teams with sample rosters`);
+
+  // Example match on Round 2 (Thu AM, Foursomes) — Geoff & DJ vs Charlie & Graham.
+  const round2 = createdRounds.find(r => r.roundNumber === 2);
+  const byEmail = (e) => createdPlayers.find(p => p.email === e);
+  const alpha = createdTeams[1];
+  const bravo = createdTeams[2];
+  if (round2 && alpha && bravo) {
+    const geoff   = byEmail('mclaughlingeoffrey@gmail.com');
+    const dj      = byEmail('David.Goldberg@jll.com');
+    const charlie = byEmail('luceca8@gmail.com');
+    const graham  = byEmail('grteclark@gmail.com');
+    if (geoff && dj && charlie && graham) {
+      await prisma.match.create({
+        data: {
+          roundId: round2.id,
+          matchNumber: 1,
+          teamAId: alpha.id,
+          teamBId: bravo.id,
+          players: {
+            create: [
+              { playerId: geoff.id,   side: 'A' },
+              { playerId: dj.id,      side: 'A' },
+              { playerId: charlie.id, side: 'B' },
+              { playerId: graham.id,  side: 'B' },
+            ],
+          },
+        },
+      });
+      console.log('Created example match: Round 2 Match 1 (Foursomes)');
+    }
+  }
 
   // Meal reservations
   for (const meal of MEAL_RESERVATIONS) {
