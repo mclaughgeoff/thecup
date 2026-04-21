@@ -1,6 +1,8 @@
 import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import Image from 'next/image';
 import Link from 'next/link';
+import { theme } from '@/lib/theme';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,46 +14,58 @@ export default async function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-ink-0 text-fg-1 relative overflow-hidden">
-      {/* Ambient glow */}
+    <main className="min-h-screen bg-hero-green text-cream relative overflow-hidden">
+      {/* Ambient highlight — matches the Augusta preview's radial glow */}
       <div
         aria-hidden="true"
-        className="absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full blur-3xl opacity-20 bg-masters"
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(circle at 80% 15%, rgba(245,235,214,0.22), transparent 55%)',
+        }}
       />
 
       <div className="relative max-w-xl mx-auto px-6 pt-24 pb-16 flex flex-col min-h-screen">
-        <div className="flex-1 flex flex-col justify-center text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold mb-4">
+        <div className="flex-1 flex flex-col items-center justify-center text-center">
+          <Image
+            src={theme.logo}
+            alt=""
+            width={96}
+            height={96}
+            priority
+            className="mb-6 drop-shadow-[0_6px_18px_rgba(0,0,0,0.25)]"
+          />
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-cream/80 mb-4">
             Sea Pines · May 13–17, 2026
           </p>
-          <h1 className="text-6xl font-bold tracking-tight mb-4">
-            The <span className="text-masters-glow">Cup</span>
+          <h1 className="text-6xl font-bold tracking-tight mb-4 text-cream">
+            The <span className="text-white">Cup</span>
           </h1>
-          <p className="text-base text-fg-2 mb-10 max-w-sm mx-auto">
+          <p className="text-base text-cream/80 mb-10 max-w-sm mx-auto">
             Sixteen players. Eight rounds. Two teams. One trophy.
           </p>
 
           <Link
             href="/auth/request-link"
-            className="btn-primary w-full py-4 text-base"
+            className="inline-flex items-center justify-center w-full py-4 rounded-xl bg-cream text-masters font-semibold text-base shadow-[0_8px_24px_rgba(0,0,0,0.18)] hover:bg-cream-light active:scale-[0.99] transition"
           >
             Sign in with magic link
           </Link>
         </div>
 
-        <div className="pt-10 border-t border-ink-3 grid grid-cols-3 gap-3 text-center">
-          <div>
-            <p className="text-2xl font-semibold text-gold">16</p>
-            <p className="text-[10px] uppercase tracking-wider text-fg-3 mt-0.5">players</p>
-          </div>
-          <div>
-            <p className="text-2xl font-semibold text-gold">8</p>
-            <p className="text-[10px] uppercase tracking-wider text-fg-3 mt-0.5">rounds</p>
-          </div>
-          <div>
-            <p className="text-2xl font-semibold text-gold">3</p>
-            <p className="text-[10px] uppercase tracking-wider text-fg-3 mt-0.5">courses</p>
-          </div>
+        <div className="pt-10 border-t border-cream/20 grid grid-cols-3 gap-3 text-center">
+          {[
+            { n: 16, label: 'players' },
+            { n: 8, label: 'rounds' },
+            { n: 3, label: 'courses' },
+          ].map(({ n, label }) => (
+            <div key={label}>
+              <p className="text-2xl font-semibold text-cream">{n}</p>
+              <p className="text-[10px] uppercase tracking-wider text-cream/60 mt-0.5">
+                {label}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     </main>

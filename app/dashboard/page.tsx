@@ -76,17 +76,36 @@ export default async function DashboardPage() {
       <>
         <AppHeader brand />
         <main className="bg-ink-0 pb-nav">
-          <DashboardLiveBanner />
-          <PushPrompt />
-          <section className="px-4 pt-8 pb-6">
-            <div className="flex items-center gap-4">
-              <PlayerAvatar name={player.name} photoUrl={player.photoUrl} size="lg" />
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.15em] text-fg-3">Welcome back</p>
-                <h1 className="text-3xl md:text-4xl font-bold tracking-tight mt-0.5">{firstName}</h1>
+          {/* Hero — dark green gradient with cream greeting, matches the Augusta preview */}
+          <section className="relative overflow-hidden bg-hero-green text-cream">
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 opacity-[0.35] pointer-events-none"
+              style={{
+                background:
+                  'radial-gradient(circle at 85% 15%, rgba(245,235,214,0.18), transparent 55%)',
+              }}
+            />
+            <div className="relative px-4 pt-8 pb-7">
+              <div className="flex items-center gap-4">
+                <PlayerAvatar
+                  name={player.name}
+                  photoUrl={player.photoUrl}
+                  size="lg"
+                />
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-cream/70">
+                    Welcome back
+                  </p>
+                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight mt-0.5 text-cream">
+                    {firstName}
+                  </h1>
+                </div>
               </div>
             </div>
           </section>
+          <DashboardLiveBanner />
+          <PushPrompt />
 
           {nextRound ? (
             <section className="px-4 pb-4">

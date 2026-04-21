@@ -73,24 +73,29 @@ export default function DashboardLiveBanner() {
     <section className="px-4 pt-4">
       <Link
         href={`/live/${m.matchId}`}
-        className="block rounded-2xl overflow-hidden bg-gradient-to-r from-masters to-masters-glow text-white shadow-hero tap-highlight-none active:scale-[0.99] transition"
+        className="block rounded-2xl overflow-hidden bg-cream-light border border-masters/20 shadow-card tap-highlight-none active:scale-[0.99] transition hover:border-masters/40"
       >
-        <div className="flex items-center justify-between gap-3 px-4 py-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="relative inline-flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-white/80 opacity-60 animate-ping" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
-              </span>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/90">
-                {label}
-              </span>
-            </div>
-            <p className="text-sm font-semibold mt-1 truncate">
+        <div className="flex items-center justify-between gap-3 px-4 py-3">
+          <div className="min-w-0 flex items-center gap-3">
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-extrabold tracking-[0.14em] uppercase ${
+                isLive
+                  ? 'bg-lighthouse text-white'
+                  : 'bg-masters/10 text-masters-glow'
+              }`}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  isLive ? 'bg-white animate-pulse-dot' : 'bg-masters-glow'
+                }`}
+              />
+              {label}
+            </span>
+            <p className="text-sm font-semibold text-fg-1 truncate">
               {m.roundLabel} · {m.teeTime}
             </p>
           </div>
-          <span className="bg-white/15 rounded-full px-4 py-2 font-semibold text-sm whitespace-nowrap">
+          <span className="bg-masters text-cream rounded-full px-3.5 py-1.5 font-semibold text-xs whitespace-nowrap shadow-sm">
             Enter live →
           </span>
         </div>
