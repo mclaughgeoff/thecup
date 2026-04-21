@@ -13,7 +13,7 @@ const toneClasses: Record<NonNullable<SectionCardProps['tone']>, string> = {
   default:  'bg-white border-ink-3 shadow-card',
   elevated: 'bg-white border-transparent shadow-elev',
   masters:  'bg-white border-masters/25 shadow-card',
-  // "gold" is legacy — now the indigo-tinted hero treatment
+  // "gold" is legacy — now the green-tinted hero treatment (Masters gradient)
   gold:     'bg-gradient-to-br from-masters/10 to-masters/5 border-masters/20 shadow-hero',
   teamA:    'bg-white border-teamA/40 shadow-card',
   teamB:    'bg-white border-teamB/40 shadow-card',

@@ -6,10 +6,12 @@
  */
 
 export type ScoringType = 'match' | 'stroke' | 'stableford';
-export type TeamScoringMode = 'individual' | 'best_ball' | 'alternate_shot' | 'scramble';
+export type TeamScoringMode = 'individual' | 'best_ball' | 'scramble';
 export type HandicapCombine = 'per_player' | 'combined_sum';
 export type StrokeEntryMode = 'per_player' | 'per_side';
 export type Side = 'A' | 'B';
+export type GhostDifficulty = 'AUTO' | 'EASY' | 'STANDARD' | 'TOUGH';
+export type AbsenceSource = 'OVERRIDE' | 'AVAILABILITY' | 'DEFAULT';
 
 /**
  * Stableford point map keyed by diff-from-par as a string.
@@ -39,6 +41,10 @@ export interface PlayerInfo {
   name: string;
   handicap: number;
   side: Side;
+  /** True if this player is absent for this match (ghost score substituted). */
+  absent?: boolean;
+  /** How the absence was resolved (for UI badges). */
+  absenceSource?: AbsenceSource;
 }
 
 export interface ScoreRow {
@@ -64,6 +70,8 @@ export interface ComputeInput {
    * partner's effective PH, so overrides compose naturally with team play.
    */
   playerOverrides?: Record<string, number>;
+  /** Ghost-score difficulty selector for absent players. Defaults to AUTO. */
+  ghostDifficulty?: GhostDifficulty;
 }
 
 export interface PerPlayer {
@@ -74,6 +82,29 @@ export interface PerPlayer {
   courseHandicap: number;
   playingHandicap: number;
   strokesByHole: Record<number, number>; // holeNumber → strokes received on that hole
+  absent: boolean;
+  absenceSource?: AbsenceSource;
+}
+
+export interface GhostPerHole {
+  hole: number;
+  par: number;
+  handicapIndex: number;
+  strokes: number; // strokes received (from PH + stroke index allocation)
+  gross: number;
+  net: number;
+}
+
+export interface GhostScorecard {
+  playerId: string;
+  playerName: string;
+  side: Side;
+  handicap: number;
+  courseHandicap: number;
+  playingHandicap: number;
+  difficultyUsed: GhostDifficulty;
+  source: AbsenceSource;
+  perHole: GhostPerHole[];
 }
 
 export interface PerHoleTeam {
@@ -108,6 +139,8 @@ export interface MatchState {
   allHolesEntered: boolean;
   /** Points awarded (1/0.5/0) once final. Null while in progress. */
   points: { a: number | null; b: number | null };
+  /** Synthesized ghost scorecards for any absent players (empty if none). */
+  ghosts: GhostScorecard[];
 }
 
 export interface MatchStatus {
@@ -250,11 +283,100 @@ export function matchStatus(
 }
 
 // ─────────────────────────────────────────────────────────────
+// Ghost scoring for absent players
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Compute a ghost's gross + net score for a single hole.
+ *
+ * AUTO (handicap-scaled):
+ *   H ≤ 9   → net par everywhere                    (gross = par + strokes)
+ *   10..19  → split: net par on SI 1–9 holes,
+ *             net bogey on SI 10–18                 (gross = par + strokes [+1 on easy half])
+ *   H ≥ 20  → net bogey everywhere                  (gross = par + strokes + 1)
+ *
+ * Slider overrides AUTO:
+ *   EASY     → net par          (gross = par + strokes)
+ *   STANDARD → net bogey        (gross = par + strokes + 1)
+ *   TOUGH    → net double bogey (gross = par + strokes + 2)
+ */
+export function computeGhostScores(
+  absentPlayerHandicap: number,
+  par: number,
+  strokeIndex: number,
+  strokesOnThisHole: number,
+  difficulty: GhostDifficulty,
+): { gross: number; net: number } {
+  const net = (bump: number) => (par + bump);
+  const gross = (bump: number) => par + strokesOnThisHole + bump;
+
+  if (difficulty === 'EASY')     return { gross: gross(0), net: net(0) };
+  if (difficulty === 'STANDARD') return { gross: gross(1), net: net(1) };
+  if (difficulty === 'TOUGH')    return { gross: gross(2), net: net(2) };
+
+  // AUTO — handicap-scaled
+  const h = absentPlayerHandicap;
+  if (h <= 9) return { gross: gross(0), net: net(0) };
+  if (h >= 20) return { gross: gross(1), net: net(1) };
+  // Mid tier (10..19): net par on SI 1–9, net bogey on SI 10–18
+  const bump = strokeIndex <= 9 ? 0 : 1;
+  return { gross: gross(bump), net: net(bump) };
+}
+
+/**
+ * Three-state absence resolution.
+ *
+ *   absentOverride === true   → Absent, source OVERRIDE
+ *   absentOverride === false  → Present, source OVERRIDE
+ *   absentOverride === null   → inherit from availability
+ *                               · available === false → Absent, source AVAILABILITY
+ *                               · otherwise           → Present, source DEFAULT
+ */
+export function resolveAbsence(
+  absentOverride: boolean | null | undefined,
+  availability: { available: boolean } | null | undefined,
+): { absent: boolean; source: AbsenceSource } {
+  if (absentOverride === true)  return { absent: true,  source: 'OVERRIDE' };
+  if (absentOverride === false) return { absent: false, source: 'OVERRIDE' };
+  if (availability && availability.available === false) {
+    return { absent: true, source: 'AVAILABILITY' };
+  }
+  return { absent: false, source: 'DEFAULT' };
+}
+
+/**
+ * Scramble weighted handicap allowance (industry-standard).
+ * Players sorted ascending by course handicap, weighted blend returns the team PH.
+ *   4 players: 25/20/15/10
+ *   3 players: 30/20/10
+ *   2 players: 35/15
+ *   1 player:  100% (edge-case)
+ * Absent players are excluded from the weighting (no ghost in scramble).
+ * Falls back to the 4-player blend if >4 somehow.
+ */
+export function scrambleTeamPlayingHandicap(presentCourseHandicaps: number[]): number {
+  const sorted = [...presentCourseHandicaps].sort((a, b) => a - b);
+  const weights: Record<number, number[]> = {
+    1: [1.0],
+    2: [0.35, 0.15],
+    3: [0.30, 0.20, 0.10],
+    4: [0.25, 0.20, 0.15, 0.10],
+  };
+  const w = weights[sorted.length] ?? weights[4];
+  let ph = 0;
+  for (let i = 0; i < sorted.length; i++) {
+    ph += sorted[i] * (w[i] ?? 0);
+  }
+  return Math.round(ph);
+}
+
+// ─────────────────────────────────────────────────────────────
 // High-level: compute full match state for a given Format + scores
 // ─────────────────────────────────────────────────────────────
 
 export function computeMatchState(input: ComputeInput): MatchState {
   const { format, allowance, slope, holes, players, scores } = input;
+  const ghostDifficulty: GhostDifficulty = input.ghostDifficulty ?? 'AUTO';
 
   // Sort holes by number
   const orderedHoles = [...holes].sort((a, b) => a.holeNumber - b.holeNumber);
@@ -278,12 +400,29 @@ export function computeMatchState(input: ComputeInput): MatchState {
       courseHandicap: ch,
       playingHandicap: ph,
       strokesByHole,
+      absent: p.absent === true,
+      absenceSource: p.absenceSource,
     };
   });
 
-  // Team playing handicap (combined_sum path)
-  const teamPHA = combinedTeamPlayingHandicap(perPlayer.filter(p => p.side === 'A').map(p => p.playingHandicap));
-  const teamPHB = combinedTeamPlayingHandicap(perPlayer.filter(p => p.side === 'B').map(p => p.playingHandicap));
+  const isScramble = format.teamScoringMode === 'scramble';
+
+  // Team playing handicap.
+  // Scramble: weighted allowance of *present* players only (no ghost in scramble).
+  // Non-scramble: sum of every player's PH (absent partners still contribute via ghost).
+  let teamPHA: number;
+  let teamPHB: number;
+  if (isScramble) {
+    const presentA = perPlayer.filter(p => p.side === 'A' && !p.absent).map(p => p.courseHandicap);
+    const presentB = perPlayer.filter(p => p.side === 'B' && !p.absent).map(p => p.courseHandicap);
+    // Apply the configured allowance % on top of the weighted scramble blend so round-level
+    // overrides (e.g. 85%) still compose with the scramble weighting.
+    teamPHA = playingHandicap(scrambleTeamPlayingHandicap(presentA), allowance);
+    teamPHB = playingHandicap(scrambleTeamPlayingHandicap(presentB), allowance);
+  } else {
+    teamPHA = combinedTeamPlayingHandicap(perPlayer.filter(p => p.side === 'A').map(p => p.playingHandicap));
+    teamPHB = combinedTeamPlayingHandicap(perPlayer.filter(p => p.side === 'B').map(p => p.playingHandicap));
+  }
   const teamPlayingHandicap: Record<Side, number> = { A: teamPHA, B: teamPHB };
 
   // Strokes per side per hole (for per_side / combined_sum formats)
@@ -291,6 +430,52 @@ export function computeMatchState(input: ComputeInput): MatchState {
   for (const h of orderedHoles) {
     teamStrokesByHole.A[h.holeNumber] = strokesOnHole(teamPHA, h.handicapIndex);
     teamStrokesByHole.B[h.holeNumber] = strokesOnHole(teamPHB, h.handicapIndex);
+  }
+
+  // Synthesize ghost scorecards for absent players.
+  // In scramble we don't produce ghosts (the format re-weights instead).
+  const ghosts: GhostScorecard[] = [];
+  if (!isScramble) {
+    for (const p of perPlayer) {
+      if (!p.absent) continue;
+      const perHoleGhost: GhostPerHole[] = orderedHoles.map((h) => {
+        const strokes = p.strokesByHole[h.holeNumber];
+        const { gross, net } = computeGhostScores(
+          p.handicap,
+          h.par,
+          h.handicapIndex,
+          strokes,
+          ghostDifficulty,
+        );
+        return {
+          hole: h.holeNumber,
+          par: h.par,
+          handicapIndex: h.handicapIndex,
+          strokes,
+          gross,
+          net,
+        };
+      });
+      ghosts.push({
+        playerId: p.playerId,
+        playerName: p.name,
+        side: p.side,
+        handicap: p.handicap,
+        courseHandicap: p.courseHandicap,
+        playingHandicap: p.playingHandicap,
+        difficultyUsed: ghostDifficulty,
+        source: p.absenceSource ?? 'OVERRIDE',
+        perHole: perHoleGhost,
+      });
+    }
+  }
+
+  // Fast lookup: ghost net/gross per (playerId, hole)
+  const ghostByKey = new Map<string, { gross: number; net: number; strokes: number }>();
+  for (const g of ghosts) {
+    for (const h of g.perHole) {
+      ghostByKey.set(`${g.playerId}:${h.hole}`, { gross: h.gross, net: h.net, strokes: h.strokes });
+    }
   }
 
   // Bucket scores
@@ -320,9 +505,14 @@ export function computeMatchState(input: ComputeInput): MatchState {
 
       // per_player entry
       if (format.teamScoringMode === 'best_ball') {
-        // Each partner's net; team net = min of completed partners.
+        // Each partner's net (real score or ghost substitute); team net = min.
         const completed: Array<{ gross: number; net: number; strokes: number }> = [];
         for (const p of sidePlayers) {
+          if (p.absent) {
+            const ghost = ghostByKey.get(`${p.playerId}:${h.holeNumber}`);
+            if (ghost) completed.push(ghost);
+            continue;
+          }
           const g = scoresByKey.get(`p:${p.playerId}:${h.holeNumber}`);
           if (g == null) continue;
           const s = p.strokesByHole[h.holeNumber];
@@ -334,19 +524,25 @@ export function computeMatchState(input: ComputeInput): MatchState {
       }
 
       if (format.teamScoringMode === 'individual') {
-        // Singles: one player per side; use that player's score directly.
+        // Singles: one player per side; use real or ghost score.
         const p = sidePlayers[0];
         if (!p) return { gross: null, net: null, strokes: 0 };
+        if (p.absent) {
+          const ghost = ghostByKey.get(`${p.playerId}:${h.holeNumber}`);
+          return ghost ? { gross: ghost.gross, net: ghost.net, strokes: ghost.strokes } : { gross: null, net: null, strokes: 0 };
+        }
         const g = scoresByKey.get(`p:${p.playerId}:${h.holeNumber}`) ?? null;
         const strokes = p.strokesByHole[h.holeNumber];
         const net = g == null ? null : g - strokes;
         return { gross: g, net, strokes };
       }
 
-      // alternate_shot / scramble but per_player entry — treat first recorded partner as the team score
-      const p = sidePlayers[0];
-      if (!p) return { gross: null, net: null, strokes: 0 };
-      const g = scoresByKey.get(`p:${p.playerId}:${h.holeNumber}`) ?? null;
+      // scramble, per_player entry — treat first recorded present partner as the team's gross,
+      // then apply the re-weighted team strokes allocation.
+      const present = sidePlayers.filter(p => !p.absent);
+      const first = present[0];
+      if (!first) return { gross: null, net: null, strokes: 0 };
+      const g = scoresByKey.get(`p:${first.playerId}:${h.holeNumber}`) ?? null;
       const strokes = teamStrokesByHole[side][h.holeNumber];
       const net = g == null ? null : g - strokes;
       return { gross: g, net, strokes };
@@ -424,6 +620,7 @@ export function computeMatchState(input: ComputeInput): MatchState {
     matchStatus: status,
     allHolesEntered,
     points,
+    ghosts,
   };
 }
 
@@ -443,9 +640,14 @@ export function computeMatchState(input: ComputeInput): MatchState {
  */
 export function projectMatchPoints(
   state: MatchState,
-  match: { final: boolean },
+  match: { final: boolean; overridePointsA?: number | null; overridePointsB?: number | null },
   scoringType: ScoringType,
 ): { a: number; b: number } {
+  // Admin override short-circuits everything — both actual and projected treat
+  // the override as the final result.
+  if (match.overridePointsA != null && match.overridePointsB != null) {
+    return { a: match.overridePointsA, b: match.overridePointsB };
+  }
   if (match.final) {
     return { a: state.points.a ?? 0, b: state.points.b ?? 0 };
   }
@@ -492,13 +694,19 @@ export function computeRyderCupTotals(
     scoringType: ScoringType;
     pointsA: number | null;
     pointsB: number | null;
+    overridePointsA?: number | null;
+    overridePointsB?: number | null;
   }>,
 ): RyderCupTotals {
   const actual = { a: 0, b: 0 };
   const projected = { a: 0, b: 0 };
   for (const e of entries) {
-    const isFinal = e.state.matchStatus.final || (e.pointsA != null && e.pointsB != null);
-    if (e.pointsA != null && e.pointsB != null) {
+    const hasOverride = e.overridePointsA != null && e.overridePointsB != null;
+    const isFinal = hasOverride || e.state.matchStatus.final || (e.pointsA != null && e.pointsB != null);
+    if (hasOverride) {
+      actual.a += e.overridePointsA as number;
+      actual.b += e.overridePointsB as number;
+    } else if (e.pointsA != null && e.pointsB != null) {
       actual.a += e.pointsA;
       actual.b += e.pointsB;
     } else if (isFinal) {
@@ -506,7 +714,11 @@ export function computeRyderCupTotals(
       actual.a += e.state.points.a ?? 0;
       actual.b += e.state.points.b ?? 0;
     }
-    const p = projectMatchPoints(e.state, { final: isFinal }, e.scoringType);
+    const p = projectMatchPoints(
+      e.state,
+      { final: isFinal, overridePointsA: e.overridePointsA, overridePointsB: e.overridePointsB },
+      e.scoringType,
+    );
     projected.a += p.a;
     projected.b += p.b;
   }

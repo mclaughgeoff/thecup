@@ -1,12 +1,15 @@
 import { requireAuth } from '@/lib/auth';
 import AppHeader from '@/components/AppHeader';
 import BottomTabBar from '@/components/BottomTabBar';
+import OverrideResultCard from '@/components/OverrideResultCard';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import {
   computeMatchState,
+  resolveAbsence,
   resolveRoundFormat,
+  type GhostDifficulty,
   type HoleInfo,
   type PlayerInfo,
   type ScoreRow,
@@ -30,10 +33,12 @@ export default async function RyderCupMatchPage({
       teamB: true,
       scores: true,
       players: { include: { player: true } },
+      overriddenBy: { select: { id: true, name: true, nickname: true } },
       round: {
         include: {
           formatRef: true,
           handicapOverrides: true,
+          availabilities: true,
           courseRef: {
             include: {
               teeBoxes: true,
@@ -65,12 +70,24 @@ export default async function RyderCupMatchPage({
     );
     slope = teeBox?.slope ?? null;
 
-    const players: PlayerInfo[] = match.players.map((mp) => ({
-      playerId: mp.playerId,
-      name: mp.player.name,
-      handicap: mp.player.handicap,
-      side: mp.side as Side,
-    }));
+    const availabilityByPlayer = new Map<string, { available: boolean }>();
+    for (const a of match.round.availabilities ?? []) {
+      availabilityByPlayer.set(a.playerId, { available: a.available });
+    }
+    const players: PlayerInfo[] = match.players.map((mp) => {
+      const { absent, source } = resolveAbsence(
+        mp.absentOverride,
+        availabilityByPlayer.get(mp.playerId),
+      );
+      return {
+        playerId: mp.playerId,
+        name: mp.player.name,
+        handicap: mp.player.handicap,
+        side: mp.side as Side,
+        absent,
+        absenceSource: source,
+      };
+    });
     const scores: ScoreRow[] = match.scores.map((s) => ({
       hole: s.hole,
       side: s.side as Side,
@@ -91,8 +108,12 @@ export default async function RyderCupMatchPage({
       players,
       scores,
       playerOverrides,
+      ghostDifficulty: (match.ghostDifficulty ?? 'AUTO') as GhostDifficulty,
     });
   }
+
+  const hasOverride =
+    match.overridePointsA != null && match.overridePointsB != null;
 
   const teamA = match.teamA;
   const teamB = match.teamB;
@@ -133,7 +154,12 @@ export default async function RyderCupMatchPage({
                   {teamA.name}
                 </p>
                 <p className="mt-1 text-sm">
-                  {sideAPlayers.map((mp) => mp.player.name).join(' & ')}
+                  {sideAPlayers
+                    .map((mp) => {
+                      const absent = state?.perPlayer.find((p) => p.playerId === mp.playerId)?.absent;
+                      return absent ? `👻 ${mp.player.name}` : mp.player.name;
+                    })
+                    .join(' & ')}
                 </p>
               </div>
               <span className="text-fg-3 font-light">vs</span>
@@ -146,12 +172,29 @@ export default async function RyderCupMatchPage({
                   {teamB.name}
                 </p>
                 <p className="mt-1 text-sm">
-                  {sideBPlayers.map((mp) => mp.player.name).join(' & ')}
+                  {sideBPlayers
+                    .map((mp) => {
+                      const absent = state?.perPlayer.find((p) => p.playerId === mp.playerId)?.absent;
+                      return absent ? `👻 ${mp.player.name}` : mp.player.name;
+                    })
+                    .join(' & ')}
                 </p>
               </div>
             </div>
 
-            {state ? (
+            {hasOverride ? (
+              <div className="mt-5 pt-4 border-t border-ink-3 text-center">
+                <p className="text-[10px] uppercase tracking-widest text-fg-3 mb-1">
+                  Admin call
+                </p>
+                <p className="text-3xl font-bold tracking-tight text-masters-glow">
+                  {match.overridePointsA} – {match.overridePointsB}
+                </p>
+                {match.overrideLabel ? (
+                  <p className="text-xs text-fg-2 mt-2">{match.overrideLabel}</p>
+                ) : null}
+              </div>
+            ) : state ? (
               <div className="mt-5 pt-4 border-t border-ink-3 text-center">
                 <p className="text-[10px] uppercase tracking-widest text-fg-3 mb-1">
                   {state.matchStatus.final ? 'Final' : 'Live'}
@@ -176,8 +219,25 @@ export default async function RyderCupMatchPage({
           </div>
         </section>
 
+        {hasOverride ? (
+          <OverrideResultCard
+            teamA={{ name: teamA.name, color: teamAColor }}
+            teamB={{ name: teamB.name, color: teamBColor }}
+            pointsA={match.overridePointsA as number}
+            pointsB={match.overridePointsB as number}
+            label={match.overrideLabel}
+            note={match.overrideNote}
+            overriddenBy={
+              match.overriddenBy
+                ? { name: match.overriddenBy.nickname || match.overriddenBy.name }
+                : null
+            }
+            overriddenAt={match.overriddenAt}
+          />
+        ) : null}
+
         {/* CTAs */}
-        {state ? (
+        {state && !hasOverride ? (
           <section className="px-4 pt-4 grid grid-cols-2 gap-2">
             <Link href={`/ryder-cup/match/${match.id}/score`} className="btn-ghost text-center">
               Enter scores
@@ -189,7 +249,7 @@ export default async function RyderCupMatchPage({
         ) : null}
 
         {/* Team handicap summary */}
-        {state ? (
+        {state && !hasOverride ? (
           <section className="px-4 pt-4">
             <div className="card">
               <h2 className="label mb-2">Handicaps ({resolved!.allowance}% allowance)</h2>
@@ -234,7 +294,7 @@ export default async function RyderCupMatchPage({
         ) : null}
 
         {/* Scorecard grid */}
-        {state && holes.length > 0 ? (
+        {state && holes.length > 0 && !hasOverride ? (
           <section className="px-4 pt-4 space-y-3">
             <h2 className="label">Scorecard</h2>
 

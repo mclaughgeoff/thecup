@@ -1,4 +1,4 @@
-// Service worker for The Cup web push notifications.
+// Service worker for SeaPines Cup web push notifications.
 // No install/activate hooks beyond skipWaiting — we only care about push + click.
 
 self.addEventListener('install', (event) => {
@@ -15,9 +15,9 @@ self.addEventListener('push', (event) => {
   try {
     payload = event.data.json();
   } catch {
-    payload = { title: 'The Cup', body: event.data.text(), url: '/dashboard' };
+    payload = { title: 'SeaPines Cup', body: event.data.text(), url: '/dashboard' };
   }
-  const { title = 'The Cup', body = '', url = '/dashboard', tag } = payload;
+  const { title = 'SeaPines Cup', body = '', url = '/dashboard', tag } = payload;
   event.waitUntil(
     self.registration.showNotification(title, {
       body,

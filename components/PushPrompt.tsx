@@ -128,7 +128,7 @@ export default function PushPrompt() {
           {isIosHelp ? (
             <p className="text-sm text-fg-2 mt-1">
               On iPhone, tap <span className="font-semibold">Share</span> → <span className="font-semibold">Add to Home Screen</span>,
-              then open The Cup from the home screen icon to enable notifications.
+              then open SeaPines Cup from the home screen icon to enable notifications.
             </p>
           ) : (
             <p className="text-sm text-fg-2 mt-1">

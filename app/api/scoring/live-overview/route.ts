@@ -5,7 +5,9 @@ import {
   computeMatchState,
   computeRyderCupTotals,
   projectMatchPoints,
+  resolveAbsence,
   resolveRoundFormat,
+  type GhostDifficulty,
   type HoleInfo,
   type PlayerInfo,
   type ScoreRow,
@@ -33,6 +35,7 @@ export async function GET() {
             include: {
               formatRef: true,
               handicapOverrides: true,
+              availabilities: true,
               courseRef: {
                 include: {
                   teeBoxes: true,
@@ -55,6 +58,8 @@ export async function GET() {
       scoringType: ScoringType;
       pointsA: number | null;
       pointsB: number | null;
+      overridePointsA: number | null;
+      overridePointsB: number | null;
     }> = [];
 
     const rows = matches.map((m) => {
@@ -69,12 +74,29 @@ export async function GET() {
       }));
       const slope =
         m.round.courseRef.teeBoxes.find((t) => t.name === m.round.activeTeeBox)?.slope ?? null;
-      const players: PlayerInfo[] = m.players.map((mp) => ({
-        playerId: mp.playerId,
-        name: mp.player.name,
-        handicap: mp.player.handicap,
-        side: mp.side as Side,
-      }));
+
+      const availabilityByPlayer = new Map<string, { available: boolean }>();
+      for (const a of m.round.availabilities ?? []) {
+        availabilityByPlayer.set(a.playerId, { available: a.available });
+      }
+      const players: PlayerInfo[] = m.players.map((mp) => {
+        const { absent, source } = resolveAbsence(
+          mp.absentOverride,
+          availabilityByPlayer.get(mp.playerId),
+        );
+        return {
+          playerId: mp.playerId,
+          name: mp.player.name,
+          handicap: mp.player.handicap,
+          side: mp.side as Side,
+          absent,
+          absenceSource: source,
+        };
+      });
+      const absentPlayerIds = new Set(
+        players.filter((p) => p.absent).map((p) => p.playerId),
+      );
+
       const scoreRows: ScoreRow[] = m.scores.map((s) => ({
         hole: s.hole,
         side: s.side as Side,
@@ -93,6 +115,7 @@ export async function GET() {
         players,
         scores: scoreRows,
         playerOverrides,
+        ghostDifficulty: (m.ghostDifficulty ?? 'AUTO') as GhostDifficulty,
       });
       const scoringType = resolved.format.scoringType;
       aggregateInput.push({
@@ -100,10 +123,30 @@ export async function GET() {
         scoringType,
         pointsA: m.pointsA,
         pointsB: m.pointsB,
+        overridePointsA: m.overridePointsA,
+        overridePointsB: m.overridePointsB,
       });
-      const isFinal = state.matchStatus.final || (m.pointsA != null && m.pointsB != null);
-      const projected = projectMatchPoints(state, { final: isFinal }, scoringType);
+      const hasOverride = m.overridePointsA != null && m.overridePointsB != null;
+      const isFinal = hasOverride || state.matchStatus.final || (m.pointsA != null && m.pointsB != null);
+      const projected = projectMatchPoints(
+        state,
+        { final: isFinal, overridePointsA: m.overridePointsA, overridePointsB: m.overridePointsB },
+        scoringType,
+      );
       const teeTime = m.round.teeSlots?.[m.teeSlotIndex ?? 0] ?? m.round.teeTime;
+
+      // Actual points: override wins, then DB-written, then computed state (if final).
+      const actualA = hasOverride
+        ? (m.overridePointsA as number)
+        : m.pointsA ?? (isFinal ? state.points.a ?? 0 : 0);
+      const actualB = hasOverride
+        ? (m.overridePointsB as number)
+        : m.pointsB ?? (isFinal ? state.points.b ?? 0 : 0);
+
+      const statusLabel = hasOverride
+        ? (m.overrideLabel || 'Admin call')
+        : state.matchStatus.label;
+
       return {
         id: m.id,
         roundId: m.round.id,
@@ -114,22 +157,31 @@ export async function GET() {
         sideA: {
           label: m.teamA.name,
           color: m.teamA.color ?? '#C41E3A',
-          players: players.filter((p) => p.side === 'A').map((p) => p.name),
+          players: players
+            .filter((p) => p.side === 'A')
+            .map((p) => ({ name: p.name, absent: p.absent === true })),
         },
         sideB: {
           label: m.teamB.name,
           color: m.teamB.color ?? '#003DA5',
-          players: players.filter((p) => p.side === 'B').map((p) => p.name),
+          players: players
+            .filter((p) => p.side === 'B')
+            .map((p) => ({ name: p.name, absent: p.absent === true })),
         },
-        status: state.matchStatus.label,
+        status: statusLabel,
         thru: state.matchStatus.thru,
         upBy: state.matchStatus.upBy,
         final: isFinal,
-        points: {
-          a: m.pointsA ?? (isFinal ? state.points.a ?? 0 : 0),
-          b: m.pointsB ?? (isFinal ? state.points.b ?? 0 : 0),
-        },
+        points: { a: actualA, b: actualB },
         projected,
+        hasAbsent: absentPlayerIds.size > 0,
+        override: hasOverride
+          ? {
+              pointsA: m.overridePointsA,
+              pointsB: m.overridePointsB,
+              label: m.overrideLabel,
+            }
+          : null,
       };
     });
 

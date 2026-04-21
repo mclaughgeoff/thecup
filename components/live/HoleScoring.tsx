@@ -16,6 +16,24 @@ export interface PerPlayer {
   handicap: number;
   playingHandicap: number;
   strokesByHole: Record<number, number>;
+  absent?: boolean;
+}
+
+export interface GhostPerHole {
+  hole: number;
+  par: number;
+  strokes: number;
+  gross: number;
+  net: number;
+}
+
+export interface GhostScorecard {
+  playerId: string;
+  playerName: string;
+  side: 'A' | 'B';
+  handicap: number;
+  difficultyUsed: 'AUTO' | 'EASY' | 'STANDARD' | 'TOUGH';
+  perHole: GhostPerHole[];
 }
 
 export interface PerHole {
@@ -34,6 +52,13 @@ export interface MatchStateResp {
     matchNumber: number;
     teamA: { id: string; name: string; color: string | null };
     teamB: { id: string; name: string; color: string | null };
+    override?: {
+      pointsA: number;
+      pointsB: number;
+      label: string | null;
+      note: string | null;
+      overriddenBy: { id: string; name: string } | null;
+    } | null;
   };
   round: {
     id: string;
@@ -58,6 +83,7 @@ export interface MatchStateResp {
     teamStrokesByHole: Record<'A' | 'B', Record<number, number>>;
     perHole: PerHole[];
     matchStatus: { label: string; final: boolean };
+    ghosts?: GhostScorecard[];
   };
 }
 
@@ -80,6 +106,41 @@ export default function HoleScoring({ matchId, data, reload, currentHole, setHol
   const sideAPlayers = data.state.perPlayer.filter((p) => p.side === 'A');
   const sideBPlayers = data.state.perPlayer.filter((p) => p.side === 'B');
   const totalHoles = data.holes.length;
+  const ghostByKey = useMemo(() => {
+    const m = new Map<string, GhostPerHole>();
+    for (const g of data.state.ghosts ?? []) {
+      for (const h of g.perHole) m.set(`${g.playerId}:${h.hole}`, h);
+    }
+    return m;
+  }, [data.state.ghosts]);
+
+  const override = data.match.override ?? null;
+  if (override) {
+    return (
+      <div className="px-4 pt-8">
+        <div className="card-elevated text-center">
+          <p className="text-[10px] uppercase tracking-widest text-fg-3 mb-2">Admin call</p>
+          <p className="text-4xl font-bold tracking-tight text-masters-glow">
+            {override.pointsA} – {override.pointsB}
+          </p>
+          {override.label ? (
+            <p className="mt-2 text-sm font-semibold text-fg-1">{override.label}</p>
+          ) : null}
+          <p className="mt-4 text-xs text-fg-2">
+            This match has been called
+            {override.overriddenBy ? ` by ${override.overriddenBy.name}` : ''}. Live scoring is
+            locked.
+          </p>
+          <a
+            href={`/ryder-cup/match/${matchId}`}
+            className="inline-block mt-4 text-xs font-semibold text-masters"
+          >
+            View override details →
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 pt-4 space-y-4">
@@ -138,6 +199,7 @@ export default function HoleScoring({ matchId, data, reload, currentHole, setHol
             label={teamA.name}
             color={teamA.color ?? '#C41E3A'}
             players={sideAPlayers}
+            ghostByKey={ghostByKey}
             hole={currentHole}
             matchId={matchId}
             reload={reload}
@@ -146,6 +208,7 @@ export default function HoleScoring({ matchId, data, reload, currentHole, setHol
             label={teamB.name}
             color={teamB.color ?? '#003DA5'}
             players={sideBPlayers}
+            ghostByKey={ghostByKey}
             hole={currentHole}
             matchId={matchId}
             reload={reload}
@@ -309,6 +372,7 @@ function SideBlock({
   label,
   color,
   players,
+  ghostByKey,
   hole,
   matchId,
   reload,
@@ -316,6 +380,7 @@ function SideBlock({
   label: string;
   color: string;
   players: PerPlayer[];
+  ghostByKey: Map<string, GhostPerHole>;
   hole: number;
   matchId: string;
   reload: () => Promise<void>;
@@ -329,9 +394,30 @@ function SideBlock({
         </p>
       </div>
       <div className="space-y-2">
-        {players.map((p) => (
-          <PlayerStepper key={p.playerId} player={p} hole={hole} matchId={matchId} reload={reload} />
-        ))}
+        {players.map((p) => {
+          if (p.absent) {
+            const g = ghostByKey.get(`${p.playerId}:${hole}`);
+            return (
+              <div key={p.playerId} className="flex items-center gap-2 opacity-80">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate">
+                    <span className="mr-1">👻</span>
+                    {p.name}
+                  </p>
+                  <p className="text-[10px] text-fg-3 italic">
+                    Ghost: {g ? `gross ${g.gross} · net ${g.net}` : '—'}
+                  </p>
+                </div>
+                <span className="w-10 text-center text-2xl font-bold font-mono tabular-nums text-fg-3 italic">
+                  {g?.gross ?? '—'}
+                </span>
+              </div>
+            );
+          }
+          return (
+            <PlayerStepper key={p.playerId} player={p} hole={hole} matchId={matchId} reload={reload} />
+          );
+        })}
       </div>
     </div>
   );

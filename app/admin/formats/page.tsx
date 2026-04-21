@@ -14,7 +14,7 @@ interface Format {
   description: string | null;
   teamSize: number;
   scoringType: 'match' | 'stroke' | 'stableford';
-  teamScoringMode: 'individual' | 'best_ball' | 'alternate_shot' | 'scramble';
+  teamScoringMode: 'individual' | 'best_ball' | 'scramble';
   handicapCombine: 'per_player' | 'combined_sum';
   defaultAllowance: number;
   strokeEntryMode: 'per_player' | 'per_side';
@@ -222,9 +222,11 @@ export default function AdminFormatsPage() {
                   >
                     <option value="individual">Individual (1v1)</option>
                     <option value="best_ball">Best Ball</option>
-                    <option value="alternate_shot">Alternate Shot</option>
                     <option value="scramble">Scramble</option>
                   </select>
+                  <p className="text-[11px] text-fg-3 mt-1">
+                    Foursomes / alternate shot is not supported. Use best ball or scramble.
+                  </p>
                 </div>
                 <div>
                   <label className="label">Handicap combine</label>
