@@ -19,6 +19,26 @@ export default function ScorecardGrid({ data, onCellTap }: Props) {
   const totalStableford =
     data.format.scoringType === 'stableford';
 
+  const override = data.match.override ?? null;
+  if (override) {
+    return (
+      <div className="px-4 pt-8">
+        <div className="card-elevated text-center">
+          <p className="text-[10px] uppercase tracking-widest text-fg-3 mb-2">Admin call</p>
+          <p className="text-4xl font-bold tracking-tight text-masters-glow">
+            {override.pointsA} – {override.pointsB}
+          </p>
+          {override.label ? (
+            <p className="mt-2 text-sm font-semibold text-fg-1">{override.label}</p>
+          ) : null}
+          <p className="mt-4 text-xs text-fg-2">
+            Scorecard hidden — match result is frozen.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="px-4 pt-4 space-y-4">
       {front.length > 0 ? (

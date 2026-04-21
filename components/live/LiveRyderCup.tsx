@@ -2,10 +2,15 @@
 
 import { useEffect, useState } from 'react';
 
+interface SidePlayer {
+  name: string;
+  absent: boolean;
+}
+
 interface Side {
   label: string;
   color: string;
-  players: string[];
+  players: SidePlayer[];
 }
 
 interface MatchRow {
@@ -23,6 +28,13 @@ interface MatchRow {
   final: boolean;
   points: { a: number; b: number };
   projected: { a: number; b: number };
+  hasAbsent?: boolean;
+  override?: { pointsA: number; pointsB: number; label: string | null } | null;
+}
+
+function formatPlayers(players: SidePlayer[]): string {
+  if (players.length === 0) return '—';
+  return players.map((p) => (p.absent ? `👻 ${p.name}` : p.name)).join(' & ');
 }
 
 interface Overview {
@@ -182,7 +194,18 @@ function ProjectedSide({ name, color, score, delta, align = 'left' }: { name: st
 }
 
 function MatchupRow({ m }: { m: MatchRow }) {
-  const leading = m.upBy > 0 ? 'A' : m.upBy < 0 ? 'B' : null;
+  const isOverride = !!m.override;
+  const leading = isOverride
+    ? m.override!.pointsA > m.override!.pointsB
+      ? 'A'
+      : m.override!.pointsB > m.override!.pointsA
+      ? 'B'
+      : null
+    : m.upBy > 0
+    ? 'A'
+    : m.upBy < 0
+    ? 'B'
+    : null;
   const leaderColor = leading === 'A' ? m.sideA.color : leading === 'B' ? m.sideB.color : '#E5E7EB';
 
   return (
@@ -195,27 +218,34 @@ function MatchupRow({ m }: { m: MatchRow }) {
           <p className="text-[10px] uppercase tracking-widest text-fg-3">
             R{m.roundNumber} · M{m.matchNumber} · {m.teeTime}
           </p>
-          <span
-            className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${
-              m.final ? 'bg-masters/10 text-masters' : 'bg-ink-2 text-fg-1'
-            }`}
-          >
-            {m.status}
-          </span>
+          <div className="flex items-center gap-1">
+            {isOverride ? (
+              <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-warning/10 text-warning">
+                ADMIN CALL
+              </span>
+            ) : null}
+            <span
+              className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${
+                m.final ? 'bg-masters/10 text-masters' : 'bg-ink-2 text-fg-1'
+              }`}
+            >
+              {m.status}
+            </span>
+          </div>
         </div>
         <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
           <div className="min-w-0">
             <p className="text-[10px] uppercase tracking-wider font-semibold truncate" style={{ color: m.sideA.color }}>
               {m.sideA.label}
             </p>
-            <p className="text-xs text-fg-2 truncate">{m.sideA.players.join(' & ') || '—'}</p>
+            <p className="text-xs text-fg-2 truncate">{formatPlayers(m.sideA.players)}</p>
           </div>
           <span className="text-fg-3 text-[10px]">vs</span>
           <div className="min-w-0 text-right">
             <p className="text-[10px] uppercase tracking-wider font-semibold truncate" style={{ color: m.sideB.color }}>
               {m.sideB.label}
             </p>
-            <p className="text-xs text-fg-2 truncate">{m.sideB.players.join(' & ') || '—'}</p>
+            <p className="text-xs text-fg-2 truncate">{formatPlayers(m.sideB.players)}</p>
           </div>
         </div>
         {m.final ? (
