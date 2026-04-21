@@ -78,7 +78,13 @@ model Round {
   activeTeeBox    String?   // Which TeeBox.name to use for this round
   teeTime         String    // "8:15-8:41 AM" format
   isRyderCup      Boolean   @default(true)
-  format          String    @default("Foursomes") // Foursomes, Four-ball, Scramble, Skins, etc.
+  format          String    @default("Foursomes") // Display fallback; real behavior lives on Format
+
+  // Format + scoring config
+  formatId           String?
+  formatRef          Format?   @relation(fields: [formatId], references: [id])
+  handicapAllowance  Int?      // Override Format.defaultAllowance (0-100). Null = inherit.
+  scoringType        String?   // Override Format.scoringType. Null = inherit.
 
   matches         Match[]
   availabilities  RoundAvailability[]
@@ -169,8 +175,14 @@ model Score {
   id        String    @id @default(cuid())
   matchId   String
   match     Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  playerId  String
-  player    Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  // Which team the score belongs to (duplicated from MatchPlayer for easy queries).
+  // Required even for per-player scores so team aggregation is trivial.
+  side      String    // 'A' or 'B'
+
+  // Whose score this is. Nullable for per-side formats where one person enters the team's score.
+  playerId  String?
+  player    Player?   @relation(fields: [playerId], references: [id], onDelete: SetNull)
 
   hole      Int       // 1-18
   strokes   Int
@@ -178,7 +190,33 @@ model Score {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
+  // Team-side scores (playerId null): unique per match+side+hole.
+  // Per-player scores: unique per match+player+hole. Both constraints enforced by application logic;
+  // at the DB level we just ensure no duplicate rows when the triple is fully set.
   @@unique([matchId, playerId, hole])
+  @@index([matchId, hole])
+  @@index([matchId, side, hole])
+}
+
+// --- Formats (scoring rules) ---
+
+model Format {
+  id               String   @id @default(cuid())
+  name             String   @unique
+  slug             String   @unique
+  description      String?
+  teamSize         Int                         // players per side: 1, 2, or 4
+  scoringType      String                      // "match" | "stroke" | "stableford"
+  teamScoringMode  String                      // "individual" | "best_ball" | "alternate_shot" | "scramble"
+  handicapCombine  String                      // "per_player" | "combined_sum"
+  defaultAllowance Int                         // 0-100
+  strokeEntryMode  String                      // "per_player" | "per_side"
+  sortOrder        Int      @default(0)
+
+  rounds           Round[]
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 // --- Courses & scorecards ---
