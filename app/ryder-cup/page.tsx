@@ -4,36 +4,127 @@ import BottomTabBar from '@/components/BottomTabBar';
 import SectionCard from '@/components/SectionCard';
 import { ArrowRightIcon, UsersIcon } from '@/components/icons';
 import { prisma } from '@/lib/db';
+import {
+  computeMatchState,
+  resolveRoundFormat,
+  type HoleInfo,
+  type PlayerInfo,
+  type ScoreRow,
+  type Side,
+} from '@/lib/scoring';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
+type LiveMatchResult = {
+  matchId: string;
+  teamAId: string;
+  teamBId: string;
+  pointsA: number;       // running/final live points
+  pointsB: number;
+  final: boolean;        // match mathematically closed
+  label: string;         // "2 UP thru 12", "3&2", "AS", etc.
+};
+
 export default async function RyderCupPage() {
   const session = await requireAuth();
-
   const player = await prisma.player.findUnique({ where: { id: session.playerId } });
 
   const teams = await prisma.ryderCupTeam.findMany({
     orderBy: { teamNumber: 'asc' },
+    include: { members: true },
+  });
+
+  // Pull every match with everything needed to compute state in one go.
+  const matches = await prisma.match.findMany({
     include: {
-      matchSideA: true,
-      matchSideB: true,
-      members: true,
+      teamA: true,
+      teamB: true,
+      scores: true,
+      players: { include: { player: true } },
+      round: {
+        include: {
+          formatRef: true,
+          courseRef: {
+            include: {
+              teeBoxes: true,
+              holes: { orderBy: { holeNumber: 'asc' } },
+            },
+          },
+        },
+      },
     },
   });
 
-  const standings = teams.map((team) => {
-    const pointsFromA = team.matchSideA.reduce((sum, m) => sum + (m.pointsA ?? 0), 0);
-    const pointsFromB = team.matchSideB.reduce((sum, m) => sum + (m.pointsB ?? 0), 0);
-    return {
-      id: team.id,
-      name: team.name,
-      teamNumber: team.teamNumber,
-      color: team.color ?? (team.teamNumber === 1 ? '#C41E3A' : '#003DA5'),
-      points: pointsFromA + pointsFromB,
-      roster: team.members.length,
-    };
-  });
+  // Compute live state per match
+  const liveResults: LiveMatchResult[] = [];
+  for (const m of matches) {
+    const resolved = resolveRoundFormat(m.round);
+    if (!resolved || !m.round.courseRef) {
+      liveResults.push({
+        matchId: m.id, teamAId: m.teamAId, teamBId: m.teamBId,
+        pointsA: m.pointsA ?? 0, pointsB: m.pointsB ?? 0,
+        final: m.pointsA != null && m.pointsB != null,
+        label: m.result ?? 'Unconfigured',
+      });
+      continue;
+    }
+    const holes: HoleInfo[] = m.round.courseRef.holes.map((h) => ({
+      holeNumber: h.holeNumber, par: h.par, handicapIndex: h.handicapIndex,
+    }));
+    const slope = m.round.courseRef.teeBoxes.find((t) => t.name === m.round.activeTeeBox)?.slope ?? null;
+    const players: PlayerInfo[] = m.players.map((mp) => ({
+      playerId: mp.playerId, name: mp.player.name, handicap: mp.player.handicap, side: mp.side as Side,
+    }));
+    const scores: ScoreRow[] = m.scores.map((s) => ({
+      hole: s.hole, side: s.side as Side, playerId: s.playerId, strokes: s.strokes,
+    }));
+    const state = computeMatchState({
+      format: resolved.format, allowance: resolved.allowance, slope, holes, players, scores,
+    });
+    // Credit live points: once a match is final, the winning side earns; in-progress = 0.
+    // (Skip "show running probability" — only award when resolved.)
+    liveResults.push({
+      matchId: m.id,
+      teamAId: m.teamAId,
+      teamBId: m.teamBId,
+      pointsA: state.points.a ?? 0,
+      pointsB: state.points.b ?? 0,
+      final: state.matchStatus.final,
+      label: state.matchStatus.label,
+    });
+  }
+
+  const teamPoints: Record<string, number> = {};
+  const teamFinalMatches: Record<string, number> = {};
+  const teamInProgress: Record<string, number> = {};
+  for (const t of teams) {
+    teamPoints[t.id] = 0;
+    teamFinalMatches[t.id] = 0;
+    teamInProgress[t.id] = 0;
+  }
+  for (const r of liveResults) {
+    teamPoints[r.teamAId] = (teamPoints[r.teamAId] ?? 0) + r.pointsA;
+    teamPoints[r.teamBId] = (teamPoints[r.teamBId] ?? 0) + r.pointsB;
+    if (r.final) {
+      teamFinalMatches[r.teamAId] = (teamFinalMatches[r.teamAId] ?? 0) + 1;
+      teamFinalMatches[r.teamBId] = (teamFinalMatches[r.teamBId] ?? 0) + 1;
+    } else {
+      teamInProgress[r.teamAId] = (teamInProgress[r.teamAId] ?? 0) + 1;
+      teamInProgress[r.teamBId] = (teamInProgress[r.teamBId] ?? 0) + 1;
+    }
+  }
+
+  const standings = teams.map((team) => ({
+    id: team.id,
+    name: team.name,
+    teamNumber: team.teamNumber,
+    color: team.color ?? (team.teamNumber === 1 ? '#C41E3A' : '#003DA5'),
+    points: teamPoints[team.id] ?? 0,
+    roster: team.members.length,
+    finalMatches: teamFinalMatches[team.id] ?? 0,
+    inProgress: teamInProgress[team.id] ?? 0,
+  }));
 
   const teamA = standings[0];
   const teamB = standings[1];
@@ -52,6 +143,9 @@ export default async function RyderCupPage() {
       },
     },
   });
+
+  // Quick lookup: matchId -> live result label
+  const byMatch = new Map(liveResults.map((r) => [r.matchId, r]));
 
   return (
     <>
@@ -72,7 +166,7 @@ export default async function RyderCupPage() {
                   {teamA ? teamA.points.toFixed(1) : '—'}
                 </p>
                 <p className="text-[10px] uppercase tracking-wider text-fg-3 mt-1">
-                  {teamA?.roster ?? 0} players
+                  {teamA?.finalMatches ?? 0} final · {teamA?.inProgress ?? 0} live
                 </p>
               </div>
 
@@ -85,7 +179,7 @@ export default async function RyderCupPage() {
                   {teamB ? teamB.points.toFixed(1) : '—'}
                 </p>
                 <p className="text-[10px] uppercase tracking-wider text-fg-3 mt-1">
-                  {teamB?.roster ?? 0} players
+                  {teamB?.finalMatches ?? 0} final · {teamB?.inProgress ?? 0} live
                 </p>
               </div>
             </div>
@@ -132,7 +226,7 @@ export default async function RyderCupPage() {
                     {round.matches.map((match) => {
                       const sideA = match.players.filter((p) => p.side === 'A');
                       const sideB = match.players.filter((p) => p.side === 'B');
-                      const isFinal = match.pointsA !== null && match.pointsB !== null;
+                      const live = byMatch.get(match.id);
                       return (
                         <Link
                           key={match.id}
@@ -143,9 +237,17 @@ export default async function RyderCupPage() {
                             <span className="text-[10px] uppercase tracking-wider text-fg-3">
                               Match {match.matchNumber}
                             </span>
-                            {isFinal ? (
-                              <span className="pill border-masters/60 text-masters-glow">
-                                {match.result ?? 'Final'}
+                            {live ? (
+                              <span
+                                className={`pill ${
+                                  live.final
+                                    ? 'border-masters/60 text-masters-glow'
+                                    : live.label.startsWith('AS')
+                                    ? 'border-ink-3'
+                                    : 'border-masters/40 text-masters-glow'
+                                }`}
+                              >
+                                {live.label}
                               </span>
                             ) : (
                               <span className="pill">Upcoming</span>
@@ -166,9 +268,9 @@ export default async function RyderCupPage() {
                               <p className="mt-0.5">{sideB.map((mp) => mp.player.name).join(' & ') || '—'}</p>
                             </div>
                           </div>
-                          {isFinal ? (
+                          {live && live.final ? (
                             <p className="text-xs font-mono text-fg-2 mt-2 text-center">
-                              {match.pointsA} – {match.pointsB}
+                              {live.pointsA} – {live.pointsB}
                             </p>
                           ) : null}
                         </Link>
