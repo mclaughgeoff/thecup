@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -12,6 +13,12 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'The Cup · Sea Pines 2026',
   description: 'Annual 16-player Ryder Cup golf trip.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    title: 'The Cup',
+    statusBarStyle: 'default',
+  },
 };
 
 export const viewport: Viewport = {
@@ -28,7 +35,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.variable}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <ServiceWorkerRegister />
+      </body>
     </html>
   );
 }

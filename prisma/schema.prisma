@@ -57,6 +57,9 @@ model Player {
 
   // Magic links
   magicLinks        MagicLink[]
+
+  // Web push
+  pushSubscriptions PushSubscription[]
 }
 
 model Villa {
@@ -79,7 +82,10 @@ model Round {
   courseId        String?
   courseRef       Course?   @relation(fields: [courseId], references: [id])
   activeTeeBox    String?   // Which TeeBox.name to use for this round
-  teeTime         String    // "8:15-8:41 AM" format
+  teeTime         String    // "8:15-8:41 AM" format (summary range)
+  /// Individual tee-time strings in order, one per match slot. e.g. ["8:15 AM","8:24 AM",...].
+  /// matchNumber N maps to teeSlots[N-1].
+  teeSlots        String[]  @default([])
   isRyderCup      Boolean   @default(true)
   format          String    @default("Foursomes") // Display fallback; real behavior lives on Format
 
@@ -157,7 +163,10 @@ model Match {
   id          String   @id @default(cuid())
   roundId     String
   round       Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  matchNumber Int      // ordering within the round (1, 2, 3, 4)
+  matchNumber Int      // ordering within the round (1, 2, 3, 4…)
+  /// Zero-based index into Round.teeSlots. Multiple matches can share a tee slot
+  /// (e.g. singles: 2 head-to-head matches per tee time).
+  teeSlotIndex Int?
 
   // Which RC teams are competing
   teamAId     String
@@ -175,6 +184,9 @@ model Match {
 
   // Scoring
   scores      Score[]
+
+  // Tee-time reminder tracking
+  teeTimeNotification TeeTimeNotification?
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -343,4 +355,26 @@ model MagicLink {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
+}
+
+// --- Web push notifications ---
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  playerId  String
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([playerId])
+}
+
+/// Record of tee-time reminder notifications sent, to prevent duplicates.
+model TeeTimeNotification {
+  id        String   @id @default(cuid())
+  matchId   String   @unique
+  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  sentAt    DateTime @default(now())
 }

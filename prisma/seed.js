@@ -49,14 +49,22 @@ const VILLAS = [
 ];
 
 const ROUNDS = [
-  { roundNumber: 1, date: new Date(2026, 4, 13, 15,  0), dayOfWeek: 'Wed', timeSlot: 'PM', course: 'Atlantic Dunes', teeTime: '3:00-3:18 PM',  isRyderCup: false, format: 'Casual' },
-  { roundNumber: 2, date: new Date(2026, 4, 14,  8, 15), dayOfWeek: 'Thu', timeSlot: 'AM', course: 'Heron Point',    teeTime: '8:15-8:41 AM',  isRyderCup: true,  format: 'Foursomes' },
-  { roundNumber: 3, date: new Date(2026, 4, 14, 14, 24), dayOfWeek: 'Thu', timeSlot: 'PM', course: 'Heron Point',    teeTime: '2:24-2:51 PM',  isRyderCup: true,  format: 'Four-ball' },
-  { roundNumber: 4, date: new Date(2026, 4, 15,  8, 15), dayOfWeek: 'Fri', timeSlot: 'AM', course: 'Atlantic Dunes', teeTime: '8:15-8:42 AM',  isRyderCup: true,  format: 'Foursomes' },
-  { roundNumber: 5, date: new Date(2026, 4, 15, 13, 39), dayOfWeek: 'Fri', timeSlot: 'PM', course: 'Atlantic Dunes', teeTime: '1:39-2:06 PM',  isRyderCup: true,  format: 'Four-ball' },
-  { roundNumber: 6, date: new Date(2026, 4, 16,  8,  6), dayOfWeek: 'Sat', timeSlot: 'AM', course: 'Harbour Town',   teeTime: '8:06-8:33 AM',  isRyderCup: true,  format: 'Scramble' },
-  { roundNumber: 7, date: new Date(2026, 4, 16, 14, 24), dayOfWeek: 'Sat', timeSlot: 'PM', course: 'Harbour Town',   teeTime: '2:24-2:51 PM',  isRyderCup: true,  format: 'Singles' },
-  { roundNumber: 8, date: new Date(2026, 4, 17, 11, 15), dayOfWeek: 'Sun', timeSlot: 'AM', course: 'Heron Point',    teeTime: '11:15-11:24 AM', isRyderCup: false, format: 'Casual' },
+  { roundNumber: 1, date: new Date(2026, 4, 13, 15,  0), dayOfWeek: 'Wed', timeSlot: 'PM', course: 'Atlantic Dunes', teeTime: '3:00-3:18 PM',  isRyderCup: false, format: 'Casual',
+    teeSlots: ['3:00 PM', '3:09 PM', '3:18 PM'] },
+  { roundNumber: 2, date: new Date(2026, 4, 14,  8, 15), dayOfWeek: 'Thu', timeSlot: 'AM', course: 'Heron Point',    teeTime: '8:15-8:41 AM',  isRyderCup: true,  format: 'Foursomes',
+    teeSlots: ['8:15 AM', '8:24 AM', '8:33 AM', '8:41 AM'] },
+  { roundNumber: 3, date: new Date(2026, 4, 14, 14, 24), dayOfWeek: 'Thu', timeSlot: 'PM', course: 'Heron Point',    teeTime: '2:24-2:51 PM',  isRyderCup: true,  format: 'Four-ball',
+    teeSlots: ['2:24 PM', '2:33 PM', '2:42 PM', '2:51 PM'] },
+  { roundNumber: 4, date: new Date(2026, 4, 15,  8, 15), dayOfWeek: 'Fri', timeSlot: 'AM', course: 'Atlantic Dunes', teeTime: '8:15-8:42 AM',  isRyderCup: true,  format: 'Foursomes',
+    teeSlots: ['8:15 AM', '8:24 AM', '8:33 AM', '8:42 AM'] },
+  { roundNumber: 5, date: new Date(2026, 4, 15, 13, 39), dayOfWeek: 'Fri', timeSlot: 'PM', course: 'Atlantic Dunes', teeTime: '1:39-2:06 PM',  isRyderCup: true,  format: 'Four-ball',
+    teeSlots: ['1:39 PM', '1:48 PM', '1:57 PM', '2:06 PM'] },
+  { roundNumber: 6, date: new Date(2026, 4, 16,  8,  6), dayOfWeek: 'Sat', timeSlot: 'AM', course: 'Harbour Town',   teeTime: '8:06-8:33 AM',  isRyderCup: true,  format: 'Scramble',
+    teeSlots: ['8:06 AM', '8:15 AM', '8:24 AM', '8:33 AM'] },
+  { roundNumber: 7, date: new Date(2026, 4, 16, 14, 24), dayOfWeek: 'Sat', timeSlot: 'PM', course: 'Harbour Town',   teeTime: '2:24-2:51 PM',  isRyderCup: true,  format: 'Singles',
+    teeSlots: ['2:24 PM', '2:33 PM', '2:42 PM', '2:51 PM'] },
+  { roundNumber: 8, date: new Date(2026, 4, 17, 11, 15), dayOfWeek: 'Sun', timeSlot: 'AM', course: 'Heron Point',    teeTime: '11:15-11:24 AM', isRyderCup: false, format: 'Casual',
+    teeSlots: ['11:15 AM', '11:24 AM'] },
 ];
 
 // --- Course scorecards (from CUP_APP_UPDATE_PLAN.md §1B) ---
@@ -410,6 +418,7 @@ async function main() {
         data: {
           roundId: round2.id,
           matchNumber: 1,
+          teeSlotIndex: 0,
           teamAId: alpha.id,
           teamBId: bravo.id,
           players: {

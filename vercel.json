@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/cron/tee-time-reminders", "schedule": "*/5 * * * *" }
+  ]
+}

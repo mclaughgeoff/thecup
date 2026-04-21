@@ -3,6 +3,9 @@ import AppHeader from '@/components/AppHeader';
 import BottomTabBar from '@/components/BottomTabBar';
 import PlayerAvatar from '@/components/PlayerAvatar';
 import SectionCard from '@/components/SectionCard';
+import DashboardLiveBanner from '@/components/DashboardLiveBanner';
+import DashboardTodayMatches from '@/components/DashboardTodayMatches';
+import PushPrompt from '@/components/PushPrompt';
 import {
   CalendarIcon,
   TrophyIcon,
@@ -73,6 +76,8 @@ export default async function DashboardPage() {
       <>
         <AppHeader title="The Cup" />
         <main className="bg-ink-0 pb-nav">
+          <DashboardLiveBanner />
+          <PushPrompt />
           <section className="px-4 pt-8 pb-6">
             <div className="flex items-center gap-4">
               <PlayerAvatar name={player.name} photoUrl={player.photoUrl} size="lg" />
@@ -119,6 +124,8 @@ export default async function DashboardPage() {
               </SectionCard>
             </section>
           ) : null}
+
+          <DashboardTodayMatches />
 
           <section className="px-4 pb-6">
             <h2 className="label mb-3">Quick actions</h2>

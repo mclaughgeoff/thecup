@@ -176,11 +176,14 @@ export default async function RyderCupMatchPage({
           </div>
         </section>
 
-        {/* Enter scores CTA */}
+        {/* CTAs */}
         {state ? (
-          <section className="px-4 pt-4">
-            <Link href={`/ryder-cup/match/${match.id}/score`} className="btn-primary w-full">
+          <section className="px-4 pt-4 grid grid-cols-2 gap-2">
+            <Link href={`/ryder-cup/match/${match.id}/score`} className="btn-ghost text-center">
               Enter scores
+            </Link>
+            <Link href={`/live/${match.id}`} className="btn-primary text-center">
+              Live scoring →
             </Link>
           </section>
         ) : null}

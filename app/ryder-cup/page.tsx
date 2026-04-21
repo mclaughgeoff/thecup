@@ -2,14 +2,18 @@ import { requireAuth } from '@/lib/auth';
 import AppHeader from '@/components/AppHeader';
 import BottomTabBar from '@/components/BottomTabBar';
 import SectionCard from '@/components/SectionCard';
+import MatchupCard from '@/components/MatchupCard';
 import { ArrowRightIcon, UsersIcon } from '@/components/icons';
 import { prisma } from '@/lib/db';
 import {
   computeMatchState,
+  computeRyderCupTotals,
   resolveRoundFormat,
   type HoleInfo,
+  type MatchState,
   type PlayerInfo,
   type ScoreRow,
+  type ScoringType,
   type Side,
 } from '@/lib/scoring';
 import Link from 'next/link';
@@ -59,6 +63,12 @@ export default async function RyderCupPage() {
 
   // Compute live state per match
   const liveResults: LiveMatchResult[] = [];
+  const totalsInput: Array<{
+    state: MatchState;
+    scoringType: ScoringType;
+    pointsA: number | null;
+    pointsB: number | null;
+  }> = [];
   for (const m of matches) {
     const resolved = resolveRoundFormat(m.round);
     if (!resolved || !m.round.courseRef) {
@@ -87,6 +97,12 @@ export default async function RyderCupPage() {
     const state = computeMatchState({
       format: resolved.format, allowance: resolved.allowance, slope, holes, players, scores, playerOverrides,
     });
+    totalsInput.push({
+      state,
+      scoringType: resolved.format.scoringType,
+      pointsA: m.pointsA,
+      pointsB: m.pointsB,
+    });
     // Credit live points: once a match is final, the winning side earns; in-progress = 0.
     // (Skip "show running probability" — only award when resolved.)
     liveResults.push({
@@ -99,6 +115,8 @@ export default async function RyderCupPage() {
       label: state.matchStatus.label,
     });
   }
+
+  const cupTotals = computeRyderCupTotals(totalsInput);
 
   const teamPoints: Record<string, number> = {};
   const teamFinalMatches: Record<string, number> = {};
@@ -138,6 +156,7 @@ export default async function RyderCupPage() {
     where: { isRyderCup: true },
     orderBy: { date: 'asc' },
     include: {
+      formatRef: true,
       matches: {
         orderBy: { matchNumber: 'asc' },
         include: {
@@ -188,6 +207,15 @@ export default async function RyderCupPage() {
                 </p>
               </div>
             </div>
+
+            {cupTotals.projected.a !== cupTotals.actual.a || cupTotals.projected.b !== cupTotals.actual.b ? (
+              <p className="text-[10px] uppercase tracking-[0.2em] text-fg-3 text-center mt-4">
+                Projected if called now ·{' '}
+                <span className="text-fg-2 font-mono">
+                  {cupTotals.projected.a.toFixed(1)} – {cupTotals.projected.b.toFixed(1)}
+                </span>
+              </p>
+            ) : null}
           </div>
 
           <Link
@@ -224,61 +252,68 @@ export default async function RyderCupPage() {
                   <span className="pill">{round.format}</span>
                 </div>
 
-                {round.matches.length === 0 ? (
+                {round.teeSlots.length === 0 && round.matches.length === 0 ? (
                   <p className="text-xs text-fg-3 italic">Pairings TBD</p>
                 ) : (
-                  <div className="space-y-2">
-                    {round.matches.map((match) => {
-                      const sideA = match.players.filter((p) => p.side === 'A');
-                      const sideB = match.players.filter((p) => p.side === 'B');
-                      const live = byMatch.get(match.id);
+                  <div className="space-y-4">
+                    {Array.from({ length: Math.max(round.teeSlots.length, 1) }).map((_, slotIdx) => {
+                      const teeTime = round.teeSlots[slotIdx] ?? null;
+                      const slotMatches = round.matches
+                        .filter((m) => (m.teeSlotIndex ?? m.matchNumber - 1) === slotIdx)
+                        .sort((a, b) => a.matchNumber - b.matchNumber);
                       return (
-                        <Link
-                          key={match.id}
-                          href={`/ryder-cup/match/${match.id}`}
-                          className="block bg-ink-2 border border-ink-3 rounded-xl p-3 hover:border-fg-3 transition tap-highlight-none"
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-[10px] uppercase tracking-wider text-fg-3">
-                              Match {match.matchNumber}
-                            </span>
-                            {live ? (
-                              <span
-                                className={`pill ${
-                                  live.final
-                                    ? 'border-masters/60 text-masters-glow'
-                                    : live.label.startsWith('AS')
-                                    ? 'border-ink-3'
-                                    : 'border-masters/40 text-masters-glow'
-                                }`}
-                              >
-                                {live.label}
-                              </span>
-                            ) : (
-                              <span className="pill">Upcoming</span>
-                            )}
-                          </div>
-                          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-sm">
-                            <div>
-                              <p className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: teamA?.color }}>
-                                {match.teamA.name}
+                        <div key={`slot-${slotIdx}`} className="space-y-2">
+                          {teeTime ? (
+                            <div className="flex items-baseline justify-between px-1">
+                              <p className="text-[10px] uppercase tracking-widest text-fg-3">
+                                Tee time {slotIdx + 1}
                               </p>
-                              <p className="mt-0.5">{sideA.map((mp) => mp.player.name).join(' & ') || '—'}</p>
+                              <p className="text-sm font-mono">{teeTime}</p>
                             </div>
-                            <span className="text-fg-3">vs</span>
-                            <div className="text-right">
-                              <p className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: teamB?.color }}>
-                                {match.teamB.name}
-                              </p>
-                              <p className="mt-0.5">{sideB.map((mp) => mp.player.name).join(' & ') || '—'}</p>
-                            </div>
-                          </div>
-                          {live && live.final ? (
-                            <p className="text-xs font-mono text-fg-2 mt-2 text-center">
-                              {live.pointsA} – {live.pointsB}
-                            </p>
                           ) : null}
-                        </Link>
+                          {slotMatches.length === 0 ? (
+                            <div className="bg-ink-2 border border-ink-3 rounded-xl p-3">
+                              <span className="text-xs text-fg-3">TBD</span>
+                            </div>
+                          ) : (
+                            slotMatches.map((match) => {
+                              const live = byMatch.get(match.id);
+                              const footer =
+                                live && live.final ? (
+                                  <p className="text-xs font-mono text-fg-2 text-center">
+                                    {live.pointsA} – {live.pointsB}
+                                  </p>
+                                ) : null;
+                              return (
+                                <Link
+                                  key={match.id}
+                                  href={`/ryder-cup/match/${match.id}`}
+                                  className="block hover:opacity-90 transition tap-highlight-none"
+                                >
+                                  <MatchupCard
+                                    matchNumber={match.matchNumber}
+                                    strokeEntryMode={round.formatRef?.strokeEntryMode}
+                                    teamA={{ name: match.teamA.name, color: match.teamA.color }}
+                                    teamB={{ name: match.teamB.name, color: match.teamB.color }}
+                                    players={match.players.map((mp) => ({
+                                      playerId: mp.playerId,
+                                      name: mp.player.name,
+                                      handicap: mp.player.handicap,
+                                      photoUrl: mp.player.photoUrl,
+                                      side: mp.side as 'A' | 'B',
+                                    }))}
+                                    status={
+                                      live
+                                        ? { label: live.label, emphasized: live.final }
+                                        : { label: 'Upcoming' }
+                                    }
+                                    footer={footer}
+                                  />
+                                </Link>
+                              );
+                            })
+                          )}
+                        </div>
                       );
                     })}
                   </div>

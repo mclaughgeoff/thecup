@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json() as {
       roundId?: string;
       matchNumber?: number;
+      teeSlotIndex?: number | null;
       teamAId?: string;
       teamBId?: string;
       players?: PlayerEntry[];
@@ -52,6 +53,7 @@ export async function POST(request: NextRequest) {
       data: {
         roundId: body.roundId,
         matchNumber: body.matchNumber,
+        teeSlotIndex: body.teeSlotIndex ?? null,
         teamAId: body.teamAId,
         teamBId: body.teamBId,
         players: {

@@ -14,6 +14,7 @@ export async function PUT(
     await requireAdmin();
     const body = (await request.json()) as {
       matchNumber?: number;
+      teeSlotIndex?: number | null;
       players?: PlayerEntry[];
       result?: string | null;
       pointsA?: number | null;
@@ -22,6 +23,7 @@ export async function PUT(
 
     const data: Record<string, unknown> = {};
     if (body.matchNumber !== undefined) data.matchNumber = body.matchNumber;
+    if (body.teeSlotIndex !== undefined) data.teeSlotIndex = body.teeSlotIndex;
     if (body.result !== undefined)      data.result = body.result || null;
     if (body.pointsA !== undefined)     data.pointsA = body.pointsA;
     if (body.pointsB !== undefined)     data.pointsB = body.pointsB;

@@ -2,6 +2,7 @@ import { requireAuth } from '@/lib/auth';
 import AppHeader from '@/components/AppHeader';
 import BottomTabBar from '@/components/BottomTabBar';
 import SectionCard from '@/components/SectionCard';
+import MatchupCard from '@/components/MatchupCard';
 import { prisma } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -19,6 +20,7 @@ export default async function SchedulePage() {
     prisma.round.findMany({
       orderBy: { date: 'asc' },
       include: {
+        formatRef: true,
         matches: {
           orderBy: { matchNumber: 'asc' },
           include: {
@@ -103,37 +105,45 @@ export default async function SchedulePage() {
                 })()}
               </div>
 
-              {round.matches.length > 0 ? (
-                <div className="space-y-2">
-                  {round.matches.map((match) => {
-                    const sideA = match.players.filter((p) => p.side === 'A');
-                    const sideB = match.players.filter((p) => p.side === 'B');
+              {round.teeSlots.length > 0 || round.matches.length > 0 ? (
+                <div className="space-y-4">
+                  {Array.from({ length: Math.max(round.teeSlots.length, 1) }).map((_, slotIdx) => {
+                    const teeTime = round.teeSlots[slotIdx] ?? null;
+                    const slotMatches = round.matches
+                      .filter((m) => (m.teeSlotIndex ?? m.matchNumber - 1) === slotIdx)
+                      .sort((a, b) => a.matchNumber - b.matchNumber);
                     return (
-                      <div
-                        key={match.id}
-                        className="bg-ink-2 border border-ink-3 rounded-xl p-3"
-                      >
-                        <p className="text-[10px] uppercase tracking-wider text-fg-3 mb-2">
-                          Match {match.matchNumber}
-                        </p>
-                        <div className="grid grid-cols-2 gap-3 text-sm">
-                          <div>
-                            <p className="text-[10px] uppercase tracking-wider text-teamA/80 font-semibold">
-                              {match.teamA.name}
+                      <div key={`slot-${slotIdx}`} className="space-y-2">
+                        {teeTime ? (
+                          <div className="flex items-baseline justify-between px-1">
+                            <p className="text-[10px] uppercase tracking-widest text-fg-3">
+                              Tee time {slotIdx + 1}
                             </p>
-                            <p className="mt-0.5">
-                              {sideA.map((mp) => mp.player.name).join(' & ') || '—'}
-                            </p>
+                            <p className="text-sm font-mono">{teeTime}</p>
                           </div>
-                          <div>
-                            <p className="text-[10px] uppercase tracking-wider text-teamB/80 font-semibold">
-                              {match.teamB.name}
-                            </p>
-                            <p className="mt-0.5">
-                              {sideB.map((mp) => mp.player.name).join(' & ') || '—'}
-                            </p>
+                        ) : null}
+                        {slotMatches.length === 0 ? (
+                          <div className="bg-ink-2 border border-ink-3 rounded-xl p-3">
+                            <span className="text-xs text-fg-3">TBD</span>
                           </div>
-                        </div>
+                        ) : (
+                          slotMatches.map((match) => (
+                            <MatchupCard
+                              key={match.id}
+                              matchNumber={match.matchNumber}
+                              strokeEntryMode={round.formatRef?.strokeEntryMode}
+                              teamA={{ name: match.teamA.name, color: match.teamA.color }}
+                              teamB={{ name: match.teamB.name, color: match.teamB.color }}
+                              players={match.players.map((mp) => ({
+                                playerId: mp.playerId,
+                                name: mp.player.name,
+                                handicap: mp.player.handicap,
+                                photoUrl: mp.player.photoUrl,
+                                side: mp.side as 'A' | 'B',
+                              }))}
+                            />
+                          ))
+                        )}
                       </div>
                     );
                   })}

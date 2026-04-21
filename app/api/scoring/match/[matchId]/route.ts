@@ -111,7 +111,7 @@ export async function GET(
         roundNumber: match.round.roundNumber,
         dayOfWeek: match.round.dayOfWeek,
         course: match.round.course,
-        teeTime: match.round.teeTime,
+        teeTime: match.round.teeSlots?.[match.teeSlotIndex ?? 0] ?? match.round.teeTime,
         activeTeeBox: match.round.activeTeeBox,
         course_name: match.round.courseRef?.name ?? match.round.course,
       },

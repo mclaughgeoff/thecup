@@ -21,6 +21,7 @@ interface Round {
   date: string;
   course: string;
   teeTime: string;
+  teeSlots: string[];
   format: string;
   isRyderCup: boolean;
   activeTeeBox: string | null;
@@ -33,6 +34,7 @@ interface Round {
 interface Draft {
   course: string;
   teeTime: string;
+  teeSlotsText: string; // newline-separated
   format: string;
   isRyderCup: boolean;
   courseId: string;
@@ -67,6 +69,7 @@ export default function AdminRoundsPage() {
           {
             course: x.course,
             teeTime: x.teeTime,
+            teeSlotsText: (x.teeSlots ?? []).join('\n'),
             format: x.format,
             isRyderCup: x.isRyderCup,
             courseId: x.courseId ?? '',
@@ -113,6 +116,10 @@ export default function AdminRoundsPage() {
         body: JSON.stringify({
           course: d.course,
           teeTime: d.teeTime,
+          teeSlots: d.teeSlotsText
+            .split('\n')
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0),
           format: d.format,
           isRyderCup: d.isRyderCup,
           courseId: d.courseId || null,
@@ -189,6 +196,25 @@ export default function AdminRoundsPage() {
                         className="input"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="label">
+                      Individual tee times
+                      <span className="text-[10px] text-fg-3 font-normal ml-2 normal-case tracking-normal">
+                        one per line · one per match slot
+                      </span>
+                    </label>
+                    <textarea
+                      value={d.teeSlotsText}
+                      onChange={(e) => setDraft(round.id, { teeSlotsText: e.target.value })}
+                      rows={Math.max(3, d.teeSlotsText.split('\n').length)}
+                      placeholder={'8:15 AM\n8:24 AM\n8:33 AM\n8:41 AM'}
+                      className="input font-mono text-sm"
+                    />
+                    <p className="text-[10px] text-fg-3 mt-1">
+                      {d.teeSlotsText.split('\n').filter((s) => s.trim().length > 0).length} slots
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">

@@ -427,6 +427,92 @@ export function computeMatchState(input: ComputeInput): MatchState {
   };
 }
 
+// ─────────────────────────────────────────────────────────────
+// Projection: "if called now, who gets the point?"
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Given a computed match state + a match's finality flag, return the points
+ * each side would receive if the match were called at this exact moment.
+ *
+ * - If the match is final, pass state.points through (treats nulls as 0).
+ * - If no holes have been played yet, return { a: 0, b: 0 } — we don't project unplayed matches.
+ * - Match play: leading side gets 1, all-square gets 0.5/0.5. Uses state.matchStatus
+ *   which already resolves teamScoringMode (best-ball / alt-shot / scramble) into a leader.
+ * - Stroke / Stableford: compare aggregated team totals; ties → 0.5/0.5.
+ */
+export function projectMatchPoints(
+  state: MatchState,
+  match: { final: boolean },
+  scoringType: ScoringType,
+): { a: number; b: number } {
+  if (match.final) {
+    return { a: state.points.a ?? 0, b: state.points.b ?? 0 };
+  }
+  if (state.matchStatus.thru === 0) {
+    return { a: 0, b: 0 };
+  }
+
+  if (scoringType === 'match') {
+    if (state.matchStatus.upBy > 0) return { a: 1, b: 0 };
+    if (state.matchStatus.upBy < 0) return { a: 0, b: 1 };
+    return { a: 0.5, b: 0.5 };
+  }
+
+  if (scoringType === 'stroke') {
+    const a = state.totals.sideA.net;
+    const b = state.totals.sideB.net;
+    if (a < b) return { a: 1, b: 0 };
+    if (b < a) return { a: 0, b: 1 };
+    return { a: 0.5, b: 0.5 };
+  }
+
+  // stableford
+  const a = state.totals.sideA.stableford;
+  const b = state.totals.sideB.stableford;
+  if (a > b) return { a: 1, b: 0 };
+  if (b > a) return { a: 0, b: 1 };
+  return { a: 0.5, b: 0.5 };
+}
+
+export interface RyderCupTotals {
+  actual: { a: number; b: number };
+  projected: { a: number; b: number };
+}
+
+/**
+ * Aggregate actual and projected points for a list of matches.
+ *
+ * - actual: only matches whose DB `pointsA`/`pointsB` have been set (final).
+ * - projected: actual for finals + `projectMatchPoints(state, match)` for in-progress.
+ */
+export function computeRyderCupTotals(
+  entries: Array<{
+    state: MatchState;
+    scoringType: ScoringType;
+    pointsA: number | null;
+    pointsB: number | null;
+  }>,
+): RyderCupTotals {
+  const actual = { a: 0, b: 0 };
+  const projected = { a: 0, b: 0 };
+  for (const e of entries) {
+    const isFinal = e.state.matchStatus.final || (e.pointsA != null && e.pointsB != null);
+    if (e.pointsA != null && e.pointsB != null) {
+      actual.a += e.pointsA;
+      actual.b += e.pointsB;
+    } else if (isFinal) {
+      // final per state but not written back yet — treat as actual anyway.
+      actual.a += e.state.points.a ?? 0;
+      actual.b += e.state.points.b ?? 0;
+    }
+    const p = projectMatchPoints(e.state, { final: isFinal }, e.scoringType);
+    projected.a += p.a;
+    projected.b += p.b;
+  }
+  return { actual, projected };
+}
+
 /**
  * Resolve the effective FormatConfig + allowance + scoringType for a round,
  * inheriting round-level overrides.
