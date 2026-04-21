@@ -229,6 +229,36 @@ export default function AdminRoundMatchesPage() {
     }
   };
 
+  const clearAll = async () => {
+    const existing = cells.filter((c) => c.existingId);
+    if (existing.length === 0) {
+      // Nothing saved — just blank the drafts.
+      setCells((prev) => prev.map((c) => ({ ...c, sideA: [], sideB: [], result: '', pointsA: '', pointsB: '' })));
+      return;
+    }
+    if (!confirm(`Delete all ${existing.length} saved matches in this round?`)) return;
+    setSavingKey('__all__');
+    setMessage(null);
+    try {
+      const results = await Promise.all(
+        existing.map((c) =>
+          fetch(`/api/admin/matches/${c.existingId}`, { method: 'DELETE' }).then((r) => r.ok),
+        ),
+      );
+      const failed = results.filter((ok) => !ok).length;
+      await load();
+      if (failed > 0) {
+        setMessage({ type: 'error', text: `${failed} of ${existing.length} deletes failed.` });
+      } else {
+        setMessage({ type: 'success', text: `Cleared ${existing.length} matches.` });
+      }
+    } catch (err) {
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Error' });
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
   const clearCell = async (idx: number) => {
     const c = cells[idx];
     if (!c.existingId) {
@@ -325,12 +355,23 @@ export default function AdminRoundMatchesPage() {
     <>
       <AppHeader title={`Round ${round.roundNumber} matches`} backHref="/admin/ryder-cup" />
       <main className="bg-ink-0 pb-nav">
-        <p className="px-4 pt-4 text-xs text-fg-3">
-          {round.dayOfWeek} · {round.course} · {round.format} · {round.teeTime}
-          {cellsPerSlot === 2 ? (
-            <span className="text-masters-glow"> · 2 matches per tee time</span>
+        <div className="px-4 pt-4 flex items-start justify-between gap-3">
+          <p className="text-xs text-fg-3">
+            {round.dayOfWeek} · {round.course} · {round.format} · {round.teeTime}
+            {cellsPerSlot === 2 ? (
+              <span className="text-masters-glow"> · 2 matches per tee time</span>
+            ) : null}
+          </p>
+          {cells.some((c) => c.existingId) ? (
+            <button
+              onClick={clearAll}
+              disabled={savingKey === '__all__'}
+              className="btn-danger text-[11px] py-1.5 px-3 whitespace-nowrap"
+            >
+              {savingKey === '__all__' ? 'Clearing…' : 'Clear all'}
+            </button>
           ) : null}
-        </p>
+        </div>
 
         {slotCount === 0 ? (
           <div className="mx-4 mt-4 p-3 rounded-xl border border-danger/30 bg-danger/10 text-sm text-danger">
