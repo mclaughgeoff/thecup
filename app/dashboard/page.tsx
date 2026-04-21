@@ -74,7 +74,7 @@ export default async function DashboardPage() {
 
     return (
       <>
-        <AppHeader title="The Cup" />
+        <AppHeader brand />
         <main className="bg-ink-0 pb-nav">
           <DashboardLiveBanner />
           <PushPrompt />
