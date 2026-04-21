@@ -213,6 +213,10 @@ model Format {
   strokeEntryMode  String                      // "per_player" | "per_side"
   sortOrder        Int      @default(0)
 
+  // Stableford point map (keyed by net-score diff from par: "-3", "-2", "-1", "0", "1", "2").
+  // Only consulted when scoringType === 'stableford'. Null = use standard defaults.
+  stablefordConfig Json?
+
   rounds           Round[]
 
   createdAt        DateTime @default(now())

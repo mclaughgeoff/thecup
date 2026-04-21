@@ -11,12 +11,21 @@ export type HandicapCombine = 'per_player' | 'combined_sum';
 export type StrokeEntryMode = 'per_player' | 'per_side';
 export type Side = 'A' | 'B';
 
+/**
+ * Stableford point map keyed by diff-from-par as a string.
+ * E.g. { "-3": 5, "-2": 4, "-1": 3, "0": 2, "1": 1, "2": 0 }
+ * Any diff not listed falls through to the "worse than the highest key" rule,
+ * which scores 0 (or the key tagged "worse" if present).
+ */
+export type StablefordConfig = Record<string, number>;
+
 export interface FormatConfig {
   scoringType: ScoringType;
   teamScoringMode: TeamScoringMode;
   handicapCombine: HandicapCombine;
   strokeEntryMode: StrokeEntryMode;
   defaultAllowance: number;
+  stablefordConfig?: StablefordConfig | null;
 }
 
 export interface HoleInfo {
@@ -148,19 +157,33 @@ export function netScore(gross: number, strokes: number): number {
 }
 
 /**
- * Standard Stableford: net vs par
- *   ≤ par-2   → 4 pts (eagle+)
- *   par-1     → 3 pts (birdie)
- *   par       → 2 pts
- *   par+1     → 1 pt  (bogey)
- *   par+2 +   → 0 pts
+ * Default Stableford map (used when no config is provided):
+ * albatross+ → 5, eagle → 4, birdie → 3, par → 2, bogey → 1, double+ → 0.
  */
-export function stablefordPoints(netStrokes: number, par: number): number {
+export const DEFAULT_STABLEFORD: StablefordConfig = {
+  '-3': 5, '-2': 4, '-1': 3, '0': 2, '1': 1, '2': 0,
+};
+
+/**
+ * Look up the point value for a net score given a StablefordConfig.
+ * - Exact diff match wins.
+ * - Diffs *lower* than the smallest key default to the smallest-key value
+ *   (i.e. "5 under par" counts as an albatross).
+ * - Diffs *higher* than the largest key default to 0.
+ */
+export function stablefordPoints(
+  netStrokes: number,
+  par: number,
+  config: StablefordConfig | null | undefined = DEFAULT_STABLEFORD,
+): number {
+  const map = config && Object.keys(config).length > 0 ? config : DEFAULT_STABLEFORD;
   const diff = netStrokes - par;
-  if (diff <= -2) return 4;
-  if (diff === -1) return 3;
-  if (diff ===  0) return 2;
-  if (diff ===  1) return 1;
+  if (map[String(diff)] !== undefined) return map[String(diff)];
+
+  const keys = Object.keys(map).map(Number).sort((a, b) => a - b);
+  if (keys.length === 0) return 0;
+  if (diff < keys[0]) return map[String(keys[0])];
+  // Higher than max key → 0 (double-bogey or worse)
   return 0;
 }
 
@@ -329,8 +352,9 @@ export function computeMatchState(input: ComputeInput): MatchState {
       else matchResult = 'halve';
     }
 
-    const stablefordA = a.net != null ? stablefordPoints(a.net, par) : null;
-    const stablefordB = b.net != null ? stablefordPoints(b.net, par) : null;
+    const sfConfig = format.stablefordConfig ?? null;
+    const stablefordA = a.net != null ? stablefordPoints(a.net, par, sfConfig) : null;
+    const stablefordB = b.net != null ? stablefordPoints(b.net, par, sfConfig) : null;
 
     return {
       hole: h.holeNumber,
@@ -406,6 +430,7 @@ export function resolveRoundFormat(round: {
     handicapCombine: string;
     strokeEntryMode: string;
     defaultAllowance: number;
+    stablefordConfig?: unknown;
   } | null;
 }): { format: FormatConfig; allowance: number } | null {
   if (!round.formatRef) return null;
@@ -417,6 +442,10 @@ export function resolveRoundFormat(round: {
       handicapCombine: fr.handicapCombine as HandicapCombine,
       strokeEntryMode: fr.strokeEntryMode as StrokeEntryMode,
       defaultAllowance: fr.defaultAllowance,
+      stablefordConfig:
+        fr.stablefordConfig && typeof fr.stablefordConfig === 'object'
+          ? (fr.stablefordConfig as StablefordConfig)
+          : null,
     },
     allowance: round.handicapAllowance ?? fr.defaultAllowance,
   };

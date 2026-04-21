@@ -14,6 +14,7 @@ const WRITABLE = [
   'name', 'slug', 'description', 'teamSize',
   'scoringType', 'teamScoringMode', 'handicapCombine',
   'defaultAllowance', 'strokeEntryMode', 'sortOrder',
+  'stablefordConfig',
 ] as const;
 
 export async function PUT(

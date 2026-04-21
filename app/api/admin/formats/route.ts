@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
         defaultAllowance: Number(body.defaultAllowance),
         strokeEntryMode: body.strokeEntryMode,
         sortOrder: body.sortOrder !== undefined ? Number(body.sortOrder) : 0,
+        stablefordConfig: body.stablefordConfig ?? null,
       },
     });
     return NextResponse.json(format, { status: 201 });

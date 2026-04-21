@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/AppHeader';
 import BottomTabBar from '@/components/BottomTabBar';
 
+type StablefordConfig = Record<string, number>;
+
 interface Format {
   id: string;
   name: string;
@@ -17,9 +19,24 @@ interface Format {
   defaultAllowance: number;
   strokeEntryMode: 'per_player' | 'per_side';
   sortOrder: number;
+  stablefordConfig: StablefordConfig | null;
 }
 
 type Draft = Omit<Format, 'id'> & { id?: string };
+
+const DEFAULT_STABLEFORD: StablefordConfig = {
+  '-3': 5, '-2': 4, '-1': 3, '0': 2, '1': 1, '2': 0,
+};
+
+// Labels for the editor (diff-from-par → human name)
+const STABLEFORD_ROWS: Array<{ diff: string; label: string }> = [
+  { diff: '-3', label: 'Albatross or better (≤ −3)' },
+  { diff: '-2', label: 'Eagle (−2)' },
+  { diff: '-1', label: 'Birdie (−1)' },
+  { diff:  '0', label: 'Par (0)' },
+  { diff:  '1', label: 'Bogey (+1)' },
+  { diff:  '2', label: 'Double bogey or worse (+2)' },
+];
 
 const EMPTY: Draft = {
   name: '',
@@ -32,6 +49,7 @@ const EMPTY: Draft = {
   defaultAllowance: 100,
   strokeEntryMode: 'per_player',
   sortOrder: 100,
+  stablefordConfig: null,
 };
 
 export default function AdminFormatsPage() {
@@ -83,6 +101,8 @@ export default function AdminFormatsPage() {
           defaultAllowance: Number(editing.defaultAllowance),
           sortOrder: Number(editing.sortOrder),
           description: editing.description || null,
+          stablefordConfig:
+            editing.scoringType === 'stableford' ? editing.stablefordConfig : null,
         }),
       });
       if (!res.ok) {
@@ -249,6 +269,58 @@ export default function AdminFormatsPage() {
                   className="input"
                 />
               </div>
+
+              {editing.scoringType === 'stableford' ? (
+                <div className="pt-3 border-t border-ink-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="label mb-0">Stableford points</label>
+                    <button
+                      type="button"
+                      className="text-[10px] uppercase tracking-wider text-fg-3 hover:text-fg-2"
+                      onClick={() =>
+                        setEditing({ ...editing, stablefordConfig: { ...DEFAULT_STABLEFORD } })
+                      }
+                    >
+                      Reset defaults
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-fg-3 mb-3">
+                    Points earned per hole based on net score vs par. Standard is
+                    5/4/3/2/1/0. Lower scores than listed inherit the top row's value;
+                    higher inherit 0.
+                  </p>
+                  <div className="space-y-2">
+                    {STABLEFORD_ROWS.map((row) => {
+                      const config = editing.stablefordConfig ?? DEFAULT_STABLEFORD;
+                      const val = config[row.diff] ?? 0;
+                      return (
+                        <div key={row.diff} className="flex items-center gap-3">
+                          <span className="flex-1 text-xs text-fg-2">{row.label}</span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={10}
+                            value={val}
+                            onChange={(e) =>
+                              setEditing({
+                                ...editing,
+                                stablefordConfig: {
+                                  ...(editing.stablefordConfig ?? DEFAULT_STABLEFORD),
+                                  [row.diff]: Number(e.target.value),
+                                },
+                              })
+                            }
+                            className="input w-20 py-2 text-center"
+                          />
+                          <span className="text-[10px] uppercase tracking-wider text-fg-3 w-8 text-right">
+                            pts
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             {message ? (
