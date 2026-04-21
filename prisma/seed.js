@@ -14,7 +14,7 @@ const PLAYERS = [
   { email: 'mclaughlingeoffrey@gmail.com',     name: 'Geoff McLaughlin',  handicap: 16.6, villa: '828 Ketch Court',  photoUrl: '/headshots/geoff-mclaughlin.jpg',   arrivalDate: ARRIVAL_DATE_WED, isAdmin: true },
   { email: 'grteclark@gmail.com',              name: 'Graham Clark',      handicap: 19,   villa: '910 Cutter Court', photoUrl: '/headshots/graham-clark.jpg',       arrivalDate: ARRIVAL_DATE_WED },
   {
-    email: 'John.cappellucci.1@gmail.com',     name: 'John Cappellucci',  handicap: 24,   villa: '910 Cutter Court', photoUrl: '/headshots/john-cappellucci.jpg',
+    email: 'john.cappellucci.1@gmail.com',     name: 'John Cappellucci',  handicap: 24,   villa: '910 Cutter Court', photoUrl: '/headshots/john-cappellucci.jpg',
     arrivalDate: ARRIVAL_DATE_WED, arrivalTime: '8:19 AM',  arrivalFlight: 'JetBlue 249',
     departureDate: DEPARTURE_DATE_SUN, departureTime: '9:29 AM', departureFlight: 'JetBlue 250',
   },
@@ -369,7 +369,7 @@ async function main() {
       'mclaughlingeoffrey@gmail.com', // Geoff
       'David.Goldberg@jll.com',       // DJ
       'andrewjdresser@gmail.com',     // Drew
-      'John.cappellucci.1@gmail.com', // John
+      'john.cappellucci.1@gmail.com', // John
       'kfwalsh12@gmail.com',          // Kevin
       'paul.cappellucci@gmail.com',   // Paul
       'steven2434@gmail.com',         // Steve S

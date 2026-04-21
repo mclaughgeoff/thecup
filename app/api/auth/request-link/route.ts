@@ -6,15 +6,23 @@ import { sendMagicLinkEmail } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email } = await request.json();
+    const { email: raw } = await request.json();
 
-    if (!email) {
+    if (!raw || typeof raw !== 'string') {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
-    const player = await prisma.player.findUnique({
-      where: { email },
-    });
+    // Normalize: trim + lowercase. Emails are case-insensitive per RFC 5321
+    // (local-part technically isn't, but every major provider treats it as such).
+    // Our @unique column is case-sensitive, so we fall back to a case-insensitive
+    // findFirst to tolerate any legacy mixed-case rows.
+    const email = raw.trim().toLowerCase();
+
+    const player =
+      (await prisma.player.findUnique({ where: { email } })) ??
+      (await prisma.player.findFirst({
+        where: { email: { equals: email, mode: 'insensitive' } },
+      }));
 
     if (!player) {
       return NextResponse.json({ error: 'Player not found' }, { status: 404 });
