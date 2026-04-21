@@ -127,8 +127,10 @@ export default function MatchupCard({
         ) : null}
       </div>
 
-      {/* Team headers */}
-      <div className="grid grid-cols-[1fr_auto_1fr] gap-3 mb-2">
+      {/* Team headers — minmax(0, 1fr) forces columns to respect their share
+          instead of growing to content width (which was causing right-side
+          overflow on narrow phones). */}
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-3 mb-2">
         <TeamHeader team={teamA} color={colorA} />
         <span />
         <TeamHeader team={teamB} color={colorB} align="right" />
@@ -138,13 +140,16 @@ export default function MatchupCard({
         // Per-player: for each ordinal position, show sideA[i] vs sideB[i] as its own row.
         <div className="space-y-2">
           {Array.from({ length: Math.max(sideA.length, sideB.length) }).map((_, i) => (
-            <div key={i} className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-3">
-              <div className={clsx('flex items-center', aLost && 'opacity-55')}>
+            <div
+              key={i}
+              className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-3"
+            >
+              <div className={clsx('flex items-center min-w-0', aLost && 'opacity-55')}>
                 <TeamBar color={colorA} align="left" />
                 {sideA[i] ? <PlayerTile player={sideA[i]} /> : <p className="text-xs text-fg-3 italic">—</p>}
               </div>
               <span className="text-fg-3 text-xs self-center">vs</span>
-              <div className={clsx('flex items-center justify-end', bLost && 'opacity-55')}>
+              <div className={clsx('flex items-center justify-end min-w-0', bLost && 'opacity-55')}>
                 {sideB[i] ? <PlayerTile player={sideB[i]} align="right" /> : <p className="text-xs text-fg-3 italic">—</p>}
                 <TeamBar color={colorB} align="right" />
               </div>
@@ -153,8 +158,8 @@ export default function MatchupCard({
         </div>
       ) : (
         // Per-side: teammates listed together, one "vs" (or result pill) for the whole match.
-        <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-3">
-          <div className={clsx('flex items-start', aLost && 'opacity-55')}>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-stretch gap-3">
+          <div className={clsx('flex items-start min-w-0', aLost && 'opacity-55')}>
             <TeamBar color={colorA} align="left" />
             <div className="space-y-1.5 min-w-0 flex-1">
               {sideA.length === 0 ? (
@@ -180,7 +185,7 @@ export default function MatchupCard({
               <span className="text-fg-3 text-xs">vs</span>
             )}
           </div>
-          <div className={clsx('flex items-start justify-end', bLost && 'opacity-55')}>
+          <div className={clsx('flex items-start justify-end min-w-0', bLost && 'opacity-55')}>
             <div className="space-y-1.5 min-w-0 flex-1 flex flex-col items-end">
               {sideB.length === 0 ? (
                 <p className="text-xs text-fg-3 italic text-right">—</p>
