@@ -29,6 +29,7 @@ interface RcRound {
   course: string;
   teeTime: string;
   format: string;
+  isRyderCup: boolean;
   matchCount: number;
 }
 
@@ -58,17 +59,16 @@ export default function AdminRyderCupPage() {
     setTeams(ts);
     setAllPlayers(ps);
     setRounds(
-      rs
-        .filter((r: any) => r.isRyderCup)
-        .map((r: any) => ({
-          id: r.id,
-          roundNumber: r.roundNumber,
-          dayOfWeek: r.dayOfWeek,
-          course: r.course,
-          teeTime: r.teeTime,
-          format: r.format,
-          matchCount: 0, // fetched separately below
-        })),
+      rs.map((r: any) => ({
+        id: r.id,
+        roundNumber: r.roundNumber,
+        dayOfWeek: r.dayOfWeek,
+        course: r.course,
+        teeTime: r.teeTime,
+        format: r.format,
+        isRyderCup: r.isRyderCup,
+        matchCount: 0, // fetched separately below
+      })),
     );
 
     // Match counts per round
@@ -306,31 +306,56 @@ export default function AdminRyderCupPage() {
 
         {/* Round → matches */}
         <section className="px-4 pt-6">
-          <h2 className="label mb-3">Matches by round</h2>
+          <h2 className="label mb-3">Ryder Cup rounds</h2>
           <div className="space-y-2">
-            {rounds.map((r) => (
-              <Link
-                key={r.id}
-                href={`/admin/ryder-cup/rounds/${r.id}`}
-                className="card flex items-center justify-between hover:border-fg-3 transition tap-highlight-none"
-              >
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-fg-3">
-                    Round {r.roundNumber} · {r.dayOfWeek}
-                  </p>
-                  <p className="font-semibold text-sm mt-0.5">{r.course}</p>
-                  <p className="text-xs text-fg-3 mt-0.5">{r.format} · {r.teeTime}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="pill">{r.matchCount} matches</span>
-                  <ArrowRightIcon size={18} className="text-fg-3" />
-                </div>
-              </Link>
+            {rounds.filter((r) => r.isRyderCup).map((r) => (
+              <RoundRow key={r.id} r={r} />
             ))}
           </div>
         </section>
+
+        {rounds.some((r) => !r.isRyderCup) ? (
+          <section className="px-4 pt-6">
+            <h2 className="label mb-3">Casual rounds</h2>
+            <p className="text-xs text-fg-3 mb-3">
+              Not scored in the cup. Assign who's playing in each tee time so
+              the schedule and live views show groupings.
+            </p>
+            <div className="space-y-2">
+              {rounds.filter((r) => !r.isRyderCup).map((r) => (
+                <RoundRow key={r.id} r={r} />
+              ))}
+            </div>
+          </section>
+        ) : null}
       </main>
       <BottomTabBar isAdmin={me?.isAdmin} />
     </>
+  );
+}
+
+function RoundRow({ r }: { r: RcRound }) {
+  return (
+    <Link
+      href={`/admin/ryder-cup/rounds/${r.id}`}
+      className="card flex items-center justify-between hover:border-fg-3 transition tap-highlight-none"
+    >
+      <div className="min-w-0">
+        <p className="text-[10px] uppercase tracking-widest text-fg-3">
+          Round {r.roundNumber} · {r.dayOfWeek}
+        </p>
+        <p className="font-semibold text-sm mt-0.5 truncate">{r.course}</p>
+        <p className="text-xs text-fg-3 mt-0.5">
+          {r.format} · {r.teeTime}
+        </p>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        {!r.isRyderCup ? (
+          <span className="pill border-ink-3 text-fg-2 bg-cream-light">Casual</span>
+        ) : null}
+        <span className="pill">{r.matchCount} matches</span>
+        <ArrowRightIcon size={18} className="text-fg-3" />
+      </div>
+    </Link>
   );
 }

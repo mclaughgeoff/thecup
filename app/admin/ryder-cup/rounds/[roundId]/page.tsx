@@ -41,6 +41,7 @@ interface RoundInfo {
   teeTime: string;
   teeSlots: string[];
   format: string;
+  isRyderCup: boolean;
   formatRef?: { teamSize: number; strokeEntryMode: string } | null;
 }
 
@@ -86,11 +87,15 @@ export default function AdminRoundMatchesPage() {
   const [cells, setCells] = useState<CellDraft[]>([]);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [allPlayers, setAllPlayers] = useState<PlayerLite[]>([]);
+  /** Map of playerId → available(true/false) for THIS round. Missing = available. */
+  const [unavailable, setUnavailable] = useState<Set<string>>(new Set());
 
   const load = async () => {
-    const [rRes, tRes] = await Promise.all([
+    const [rRes, tRes, aRes] = await Promise.all([
       fetch('/api/admin/rounds'),
       fetch('/api/admin/rc-teams'),
+      fetch('/api/admin/availability'),
     ]);
     const { rounds } = await rRes.json();
     const r = rounds.find((x: RoundInfo) => x.id === roundId);
@@ -99,6 +104,22 @@ export default function AdminRoundMatchesPage() {
 
     const ts = (await tRes.json()) as RcTeam[];
     setTeams(ts);
+
+    // Availability + full player list (used for the casual-round flat picker).
+    // availability is keyed "<playerId>:<roundId>" → available (bool).
+    if (aRes.ok) {
+      const { players: ps, availability } = (await aRes.json()) as {
+        players: PlayerLite[];
+        availability: Record<string, boolean>;
+      };
+      setAllPlayers(ps);
+      const out = new Set<string>();
+      for (const [key, available] of Object.entries(availability)) {
+        if (!key.endsWith(`:${roundId}`)) continue;
+        if (available === false) out.add(key.split(':')[0]);
+      }
+      setUnavailable(out);
+    }
 
     const mRes = await fetch(`/api/admin/matches?roundId=${roundId}`);
     if (!mRes.ok) return;
@@ -297,6 +318,70 @@ export default function AdminRoundMatchesPage() {
   const cellsPerSlot = teamSize === 1 ? 2 : 1;
   const slotCount = round.teeSlots?.length ?? 0;
 
+  /**
+   * Casual-round picker: a single flat list of all players with a 4-slot cap.
+   * Selections are stored on side A so we satisfy the DB's teamA/teamB constraint
+   * without pretending this is a team match. Unavailable players are disabled.
+   */
+  const renderCasualGroup = (idx: number) => {
+    const cell = cells[idx];
+    if (!cell) return null;
+    const picked = cell.sideA;
+    const cap = 4;
+
+    return (
+      <div>
+        <p className="text-[10px] uppercase tracking-wider font-semibold text-fg-2 mb-2">
+          Group
+          <span className="text-fg-3 font-normal ml-1">
+            {picked.length}/{cap}
+          </span>
+        </p>
+        <div className="grid grid-cols-2 gap-1.5 max-h-64 overflow-y-auto scrollbar-none">
+          {allPlayers.map((p) => {
+            const selected = picked.includes(p.id);
+            const usedIn = playerUsage.get(p.id);
+            const lockedElsewhere = !!usedIn && usedIn !== cell.matchNumber;
+            const isUnavailable = unavailable.has(p.id);
+            const wouldExceedCap = !selected && picked.length >= cap;
+            const disabled =
+              (!selected && (lockedElsewhere || wouldExceedCap)) || isUnavailable;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                disabled={disabled}
+                onClick={() => togglePlayer(idx, 'A', p.id)}
+                className={`text-left text-sm px-2.5 py-1.5 rounded-lg border transition flex items-center gap-2 ${
+                  selected
+                    ? 'border-masters bg-masters/15 text-fg-1'
+                    : disabled
+                    ? 'border-ink-3 bg-ink-2/50 text-fg-3 opacity-50 cursor-not-allowed'
+                    : 'border-ink-3 bg-ink-2 text-fg-2 hover:border-fg-3'
+                }`}
+                title={
+                  isUnavailable
+                    ? 'Marked unavailable for this round'
+                    : lockedElsewhere
+                    ? `Already assigned to match ${usedIn}`
+                    : wouldExceedCap
+                    ? `Group is full (${cap})`
+                    : undefined
+                }
+              >
+                <PlayerAvatar name={p.name} photoUrl={p.photoUrl} size="sm" />
+                <span className="flex-1 truncate">{p.name}</span>
+                {isUnavailable ? (
+                  <span className="text-[10px] text-fg-3">out</span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   const renderSide = (idx: number, team: RcTeam | undefined, side: 'A' | 'B') => {
     const cell = cells[idx];
     if (!cell) return null;
@@ -420,10 +505,14 @@ export default function AdminRoundMatchesPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      {renderSide(i, teamA, 'A')}
-                      {renderSide(i, teamB, 'B')}
-                    </div>
+                    {round.isRyderCup ? (
+                      <div className="grid grid-cols-2 gap-3">
+                        {renderSide(i, teamA, 'A')}
+                        {renderSide(i, teamB, 'B')}
+                      </div>
+                    ) : (
+                      renderCasualGroup(i)
+                    )}
 
                     {c.existingId ? (
                       <div className="mt-4 flex items-center justify-between gap-3 p-3 rounded-xl bg-ink-2 border border-ink-3">
