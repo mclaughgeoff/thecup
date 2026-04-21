@@ -2,7 +2,8 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -39,12 +40,11 @@ model Player {
   // Availability
   roundAvailability RoundAvailability[]
 
-  // Teams & Matches
-  teamAssignments   TeamMember[]
-  matches           Match[]         @relation("player1")
-  matches2          Match[]         @relation("player2")
-  matches3          Match[]         @relation("player3")
-  matches4          Match[]         @relation("player4")
+  // Ryder Cup tournament team (at most one per player)
+  ryderCupTeam      RyderCupTeamMember?
+
+  // Per-match appearances (subset of team roster in any given match)
+  matchAppearances  MatchPlayer[]
 
   // Scoring
   scores            Score[]
@@ -72,13 +72,14 @@ model Round {
   date            DateTime
   dayOfWeek       String    // "Wed", "Thu", "Fri", "Sat", "Sun"
   timeSlot        String    // "AM" or "PM"
-  course          String    // Course name
+  course          String    // Display string for backward compat / "TBD" rounds
+  courseId        String?
+  courseRef       Course?   @relation(fields: [courseId], references: [id])
+  activeTeeBox    String?   // Which TeeBox.name to use for this round
   teeTime         String    // "8:15-8:41 AM" format
   isRyderCup      Boolean   @default(true)
   format          String    @default("Foursomes") // Foursomes, Four-ball, Scramble, Skins, etc.
 
-  teams           Team[]
-  groups          Group[]
   matches         Match[]
   availabilities  RoundAvailability[]
 
@@ -99,72 +100,69 @@ model RoundAvailability {
   @@unique([playerId, roundId])
 }
 
-model Group {
-  id        String    @id @default(cuid())
-  roundId   String
-  round     Round     @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  groupNumber Int     // 1-4 per round
+// Tournament-level Ryder Cup teams (exactly 2, persist across all RC rounds)
+model RyderCupTeam {
+  id          String   @id @default(cuid())
+  name        String   // e.g. "Team Alpha" / "Team Bravo" (admin-editable)
+  teamNumber  Int      // 1 or 2
+  color       String?  // Hex color for UI (e.g. "#C41E3A", "#003DA5")
 
-  matches   Match[]
+  members     RyderCupTeamMember[]
+  matchSideA  Match[]  @relation("sideA")
+  matchSideB  Match[]  @relation("sideB")
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  @@unique([roundId, groupNumber])
+  @@unique([teamNumber])
 }
 
-model Team {
-  id        String    @id @default(cuid())
-  roundId   String
-  round     Round     @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  teamNumber Int      // 1 or 2
-
-  members   TeamMember[]
-  matches   Match[]
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  @@unique([roundId, teamNumber])
-}
-
-model TeamMember {
-  id        String    @id @default(cuid())
+model RyderCupTeamMember {
+  id        String        @id @default(cuid())
   teamId    String
-  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  playerId  String
-  player    Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
-
-  @@unique([teamId, playerId])
+  team      RyderCupTeam  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  playerId  String        @unique   // a player can only be on one team
+  player    Player        @relation(fields: [playerId], references: [id], onDelete: Cascade)
 }
 
 model Match {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   roundId     String
-  round       Round     @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  groupId     String
-  group       Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  teamId      String
-  team        Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  round       Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  matchNumber Int      // ordering within the round (1, 2, 3, 4)
 
-  // Players: 2 or 4 depending on format
-  player1Id   String
-  player1     Player    @relation("player1", fields: [player1Id], references: [id])
-  player2Id   String
-  player2     Player    @relation("player2", fields: [player2Id], references: [id])
-  player3Id   String?
-  player3     Player?   @relation("player3", fields: [player3Id], references: [id])
-  player4Id   String?
-  player4     Player?   @relation("player4", fields: [player4Id], references: [id])
+  // Which RC teams are competing
+  teamAId     String
+  teamA       RyderCupTeam @relation("sideA", fields: [teamAId], references: [id])
+  teamBId     String
+  teamB       RyderCupTeam @relation("sideB", fields: [teamBId], references: [id])
+
+  // The actual players in this match (subset of team rosters)
+  players     MatchPlayer[]
+
+  // Result
+  result      String?  // "2&1", "3UP", "AS" (all square/halve), etc.
+  pointsA     Float?   // Points for team A (1, 0.5, or 0)
+  pointsB     Float?   // Points for team B
 
   // Scoring
   scores      Score[]
-  result      String?   // "Team1 Win 2UP", "Halve", "Team2 Win 3&2", etc.
-  points1     Float?    // Points for team 1
-  points2     Float?    // Points for team 2
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([roundId, matchNumber])
+}
+
+model MatchPlayer {
+  id        String  @id @default(cuid())
+  matchId   String
+  match     Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  playerId  String
+  player    Player  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  side      String  // "A" or "B" — which RC team side they're playing for
+
+  @@unique([matchId, playerId])
 }
 
 model Score {
@@ -181,6 +179,79 @@ model Score {
   updatedAt DateTime  @updatedAt
 
   @@unique([matchId, playerId, hole])
+}
+
+// --- Courses & scorecards ---
+
+model Course {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  designer  String?
+  location  String?
+
+  teeBoxes  TeeBox[]
+  holes     Hole[]
+  rounds    Round[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TeeBox {
+  id         String   @id @default(cuid())
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  name       String   // "Dye", "Heritage", "Love", "Blue", "White", "Gold", etc.
+  color      String?
+  totalYards Int
+  rating     Float?   // Course rating (e.g. 73.3) — nullable where unknown
+  slope      Int?     // Slope rating (e.g. 134) — nullable where unknown
+
+  holeYardages HoleYardage[]
+
+  @@unique([courseId, name])
+}
+
+model Hole {
+  id            String   @id @default(cuid())
+  courseId      String
+  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  holeNumber    Int      // 1-18
+  par           Int      // 3, 4, or 5
+  handicapIndex Int      // Stroke index 1-18 (which holes get strokes first)
+
+  yardages      HoleYardage[]
+
+  @@unique([courseId, holeNumber])
+}
+
+model HoleYardage {
+  id        String  @id @default(cuid())
+  holeId    String
+  hole      Hole    @relation(fields: [holeId], references: [id], onDelete: Cascade)
+  teeBoxId  String
+  teeBox    TeeBox  @relation(fields: [teeBoxId], references: [id], onDelete: Cascade)
+  yards     Int
+
+  @@unique([holeId, teeBoxId])
+}
+
+// --- Meals (lunches + dinners) ---
+
+model MealReservation {
+  id          String   @id @default(cuid())
+  date        DateTime
+  dayOfWeek   String   // "Wed", "Thu", etc.
+  mealType    String   // "lunch" or "dinner"
+  time        String   // "7:30 PM" or "TBD"
+  restaurant  String
+  address     String?
+  notes       String?
+  headcount   Int?
+  confirmed   Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Announcement {

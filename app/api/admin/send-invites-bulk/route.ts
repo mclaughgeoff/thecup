@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
 import { createMagicLink } from '@/lib/auth';
 import { sendMagicLinkEmail } from '@/lib/email';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/db';
 
-const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {

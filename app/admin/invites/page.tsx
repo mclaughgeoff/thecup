@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Header from '@/components/Header';
+import AppHeader from '@/components/AppHeader';
+import BottomTabBar from '@/components/BottomTabBar';
 import PlayerAvatar from '@/components/PlayerAvatar';
+import { CheckIcon } from '@/components/icons';
 
 interface Player {
   id: string;
@@ -13,8 +15,14 @@ interface Player {
   inviteSent: boolean;
 }
 
+interface MePlayer {
+  id: string;
+  name: string;
+  isAdmin: boolean;
+}
+
 export default function InvitesPage() {
-  const [player, setPlayer] = useState<any>(null);
+  const [me, setMe] = useState<MePlayer | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -28,7 +36,7 @@ export default function InvitesPage() {
         if (!res.ok) throw new Error('Unauthorized');
         const playerData = await res.json();
         if (!playerData.isAdmin) throw new Error('Not admin');
-        setPlayer(playerData);
+        setMe(playerData);
 
         const playersRes = await fetch('/api/players');
         if (!playersRes.ok) throw new Error('Failed to fetch players');
@@ -58,10 +66,10 @@ export default function InvitesPage() {
         throw new Error(data.error || 'Failed to send invite');
       }
 
-      setPlayers(
-        players.map(p => (p.id === playerId ? { ...p, inviteSent: true } : p))
+      setPlayers((prev) =>
+        prev.map((p) => (p.id === playerId ? { ...p, inviteSent: true } : p))
       );
-      setMessage({ type: 'success', text: 'Invite sent!' });
+      setMessage({ type: 'success', text: 'Invite sent.' });
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
       setMessage({
@@ -76,7 +84,7 @@ export default function InvitesPage() {
   const handleSendAllInvites = async () => {
     setSending(true);
     try {
-      const uninvitedIds = players.filter(p => !p.inviteSent).map(p => p.id);
+      const uninvitedIds = players.filter((p) => !p.inviteSent).map((p) => p.id);
 
       const res = await fetch('/api/admin/send-invites-bulk', {
         method: 'POST',
@@ -89,10 +97,10 @@ export default function InvitesPage() {
         throw new Error(data.error || 'Failed to send invites');
       }
 
-      setPlayers(players.map(p => ({ ...p, inviteSent: true })));
+      setPlayers((prev) => prev.map((p) => ({ ...p, inviteSent: true })));
       setMessage({
         type: 'success',
-        text: `Sent ${uninvitedIds.length} invite(s)!`,
+        text: `Sent ${uninvitedIds.length} invite(s).`,
       });
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
@@ -108,112 +116,109 @@ export default function InvitesPage() {
   if (loading) {
     return (
       <>
-        <Header player={player} />
-        <div className="flex justify-center items-center min-h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-cup-green border-t-transparent"></div>
-        </div>
+        <AppHeader title="Invites" backHref="/admin" />
+        <main className="min-h-[50vh] flex items-center justify-center bg-ink-0">
+          <div className="animate-spin rounded-full h-10 w-10 border-4 border-masters border-t-transparent" />
+        </main>
+        <BottomTabBar />
       </>
     );
   }
 
-  const uninvitedPlayers = players.filter(p => !p.inviteSent);
-  const invitedPlayers = players.filter(p => p.inviteSent);
+  const uninvitedPlayers = players.filter((p) => !p.inviteSent);
+  const invitedPlayers = players.filter((p) => p.inviteSent);
 
   return (
     <>
-      <Header player={player} />
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold text-cup-navy mb-8">📧 Send Invites</h1>
-
-        {message && (
-          <div
-            className={`p-4 rounded-lg mb-6 ${
-              message.type === 'success'
-                ? 'bg-green-100 text-green-700'
-                : 'bg-red-100 text-red-700'
-            }`}
-          >
-            {message.text}
+      <AppHeader title="Invites" backHref="/admin" />
+      <main className="bg-ink-0 pb-nav">
+        {message ? (
+          <div className="px-4 pt-4">
+            <div
+              className={`p-3 rounded-xl text-sm border ${
+                message.type === 'success'
+                  ? 'bg-success/10 border-success/30 text-success'
+                  : 'bg-danger/10 border-danger/30 text-danger'
+              }`}
+            >
+              {message.text}
+            </div>
           </div>
-        )}
+        ) : null}
 
-        {uninvitedPlayers.length > 0 && (
-          <div className="card mb-8">
-            <h2 className="text-2xl font-bold text-cup-navy mb-4">
-              ⏳ Pending Invites ({uninvitedPlayers.length})
-            </h2>
+        {uninvitedPlayers.length > 0 ? (
+          <section className="px-4 pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="label">Pending ({uninvitedPlayers.length})</h2>
+            </div>
 
-            <div className="space-y-2 mb-6">
-              {uninvitedPlayers.map(p => (
+            <div className="card space-y-2">
+              {uninvitedPlayers.map((p) => (
                 <div
                   key={p.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                  className="flex items-center justify-between gap-3 p-3 bg-ink-2 border border-ink-3 rounded-xl"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <PlayerAvatar name={p.name} photoUrl={p.photoUrl} size="sm" />
-                    <div>
-                      <p className="font-semibold text-gray-800">{p.name}</p>
-                      <p className="text-sm text-gray-600">{p.email}</p>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm truncate">{p.name}</p>
+                      <p className="text-xs text-fg-3 truncate">{p.email}</p>
                     </div>
                   </div>
-
                   <button
                     onClick={() => handleSendInvite(p.id)}
                     disabled={sending}
-                    className="btn-primary text-sm disabled:opacity-50"
+                    className="btn-primary text-xs py-2 px-3"
                   >
-                    {sending ? 'Sending...' : 'Send Invite'}
+                    Send
                   </button>
                 </div>
               ))}
+
+              <button
+                onClick={handleSendAllInvites}
+                disabled={sending}
+                className="btn-primary w-full mt-2"
+              >
+                {sending ? 'Sending…' : `Send all ${uninvitedPlayers.length} invites`}
+              </button>
             </div>
+          </section>
+        ) : null}
 
-            <button
-              onClick={handleSendAllInvites}
-              disabled={sending}
-              className="w-full btn-primary disabled:opacity-50"
-            >
-              {sending ? 'Sending...' : `Send All ${uninvitedPlayers.length} Invites`}
-            </button>
-          </div>
-        )}
-
-        {invitedPlayers.length > 0 && (
-          <div className="card">
-            <h2 className="text-2xl font-bold text-cup-navy mb-4">
-              ✅ Invited ({invitedPlayers.length})
-            </h2>
-
-            <div className="space-y-2">
-              {invitedPlayers.map(p => (
+        {invitedPlayers.length > 0 ? (
+          <section className="px-4 pt-6">
+            <h2 className="label mb-3">Invited ({invitedPlayers.length})</h2>
+            <div className="card space-y-2">
+              {invitedPlayers.map((p) => (
                 <div
                   key={p.id}
-                  className="flex items-center gap-3 p-4 bg-green-50 rounded-lg"
+                  className="flex items-center gap-3 p-3 bg-ink-2 border border-ink-3 rounded-xl"
                 >
                   <PlayerAvatar name={p.name} photoUrl={p.photoUrl} size="sm" />
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-800">{p.name}</p>
-                    <p className="text-sm text-gray-600">{p.email}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate">{p.name}</p>
+                    <p className="text-xs text-fg-3 truncate">{p.email}</p>
                   </div>
-                  <span className="text-green-600 font-semibold">✓ Sent</span>
+                  <span className="inline-flex items-center gap-1 text-success text-xs font-semibold">
+                    <CheckIcon size={14} />
+                    Sent
+                  </span>
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          </section>
+        ) : null}
 
-        {uninvitedPlayers.length === 0 && invitedPlayers.length === 0 && (
-          <div className="card text-center py-12">
-            <p className="text-gray-600 text-lg">No players found</p>
+        {uninvitedPlayers.length === 0 && invitedPlayers.length === 0 ? (
+          <div className="px-4 pt-8">
+            <div className="card text-center">
+              <p className="text-fg-2 text-sm">No players found.</p>
+            </div>
           </div>
-        )}
-
-        <div className="mt-12 text-center">
-          <a href="/admin" className="btn-outline">
-            ← Back to Admin Panel
-          </a>
-        </div>
-      </div>
+        ) : null}
+      </main>
+      <BottomTabBar isAdmin={me?.isAdmin} />
     </>
   );
 }

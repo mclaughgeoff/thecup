@@ -10,6 +10,12 @@ node_modules/
 /.next/
 /out/
 
+# TypeScript incremental build info
+tsconfig.tsbuildinfo
+
+# Vercel
+.vercel/
+
 # Production
 /build
 

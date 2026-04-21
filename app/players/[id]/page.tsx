@@ -1,12 +1,23 @@
 import { requireAuth } from '@/lib/auth';
-import Header from '@/components/Header';
+import AppHeader from '@/components/AppHeader';
+import BottomTabBar from '@/components/BottomTabBar';
 import PlayerAvatar from '@/components/PlayerAvatar';
-import { PrismaClient } from '@prisma/client';
+import { StarIcon } from '@/components/icons';
+import { prisma } from '@/lib/db';
 import Link from 'next/link';
 import { formatHandicap } from '@/lib/utils';
 import { notFound } from 'next/navigation';
 
-const prisma = new PrismaClient();
+export const dynamic = 'force-dynamic';
+
+function Field({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div className="flex items-center justify-between py-2.5 border-b border-ink-3 last:border-b-0">
+      <span className="text-xs uppercase tracking-wider text-fg-3">{label}</span>
+      <span className="text-sm text-fg-1">{value ?? '—'}</span>
+    </div>
+  );
+}
 
 export default async function PlayerDetailPage({ params }: { params: { id: string } }) {
   const session = await requireAuth();
@@ -26,97 +37,75 @@ export default async function PlayerDetailPage({ params }: { params: { id: strin
 
   return (
     <>
-      <Header player={{ id: currentPlayer!.id, name: currentPlayer!.name, isAdmin: currentPlayer!.isAdmin }} />
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <Link href="/players" className="text-cup-green font-semibold hover:underline mb-6 inline-block">
-          ← Back to Players
-        </Link>
+      <AppHeader title={player.name} backHref="/players" />
+      <main className="bg-ink-0 pb-nav">
+        <section className="px-4 pt-6">
+          <div className="card-elevated flex flex-col items-center text-center">
+            <PlayerAvatar name={player.name} photoUrl={player.photoUrl} size="xl" />
+            <h1 className="mt-4 text-2xl font-semibold">{player.name}</h1>
+            {player.nickname ? (
+              <p className="text-sm text-fg-2 italic">"{player.nickname}"</p>
+            ) : null}
 
-        <div className="card">
-          <div className="flex flex-col md:flex-row gap-8 mb-8">
-            <PlayerAvatar name={player.name} photoUrl={player.photoUrl} size="lg" />
-
-            <div className="flex-1">
-              <h1 className="text-4xl font-bold text-cup-navy mb-2">
-                {player.name}
-              </h1>
-
-              {player.nickname && (
-                <p className="text-xl text-gray-600 italic mb-4">"{player.nickname}"</p>
-              )}
-
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-cup-green bg-opacity-10 rounded p-4">
-                  <p className="text-sm text-gray-600">Handicap</p>
-                  <p className="text-2xl font-bold text-cup-green">
-                    {formatHandicap(player.handicap)}
-                  </p>
-                </div>
-
-                {player.villa && (
-                  <div className="bg-cup-navy bg-opacity-10 rounded p-4">
-                    <p className="text-sm text-gray-600">Villa</p>
-                    <p className="text-lg font-bold text-cup-navy">
-                      {player.villa.name}
-                    </p>
-                  </div>
-                )}
+            <div className="mt-5 flex items-center gap-6">
+              <div className="text-center">
+                <p className="text-[10px] uppercase tracking-wider text-fg-3">Handicap</p>
+                <p className="text-2xl font-mono text-gold mt-0.5">
+                  {formatHandicap(player.handicap)}
+                </p>
               </div>
-
-              {player.isAdmin && (
-                <div className="inline-block bg-cup-gold bg-opacity-20 text-cup-gold px-3 py-1 rounded-full text-sm font-semibold">
-                  👑 Trip Admin
+              {player.villa ? (
+                <div className="text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-fg-3">Villa</p>
+                  <p className="text-sm font-semibold mt-1">{player.villa.name}</p>
                 </div>
-              )}
-            </div>
-          </div>
-
-          <hr className="my-8" />
-
-          <h2 className="text-2xl font-bold text-cup-navy mb-4">Travel Info</h2>
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
-            <div>
-              <h3 className="font-bold text-cup-green mb-3">Arrival</h3>
-              {player.arrivalDate ? (
-                <div className="space-y-1 text-sm">
-                  <p><span className="text-gray-600">Date:</span> {player.arrivalDate.toLocaleDateString()}</p>
-                  <p><span className="text-gray-600">Time:</span> {player.arrivalTime || 'TBD'}</p>
-                  <p><span className="text-gray-600">Airport:</span> {player.arrivalAirport || 'TBD'}</p>
-                  <p><span className="text-gray-600">Flight:</span> {player.arrivalFlight || 'TBD'}</p>
-                </div>
-              ) : (
-                <p className="text-gray-500 text-sm">Not provided</p>
-              )}
+              ) : null}
             </div>
 
-            <div>
-              <h3 className="font-bold text-cup-green mb-3">Departure</h3>
-              {player.departureDate ? (
-                <div className="space-y-1 text-sm">
-                  <p><span className="text-gray-600">Date:</span> {player.departureDate.toLocaleDateString()}</p>
-                  <p><span className="text-gray-600">Time:</span> {player.departureTime || 'TBD'}</p>
-                  <p><span className="text-gray-600">Airport:</span> {player.departureAirport || 'TBD'}</p>
-                  <p><span className="text-gray-600">Flight:</span> {player.departureFlight || 'TBD'}</p>
-                </div>
-              ) : (
-                <p className="text-gray-500 text-sm">Not provided</p>
-              )}
-            </div>
+            {player.isAdmin ? (
+              <span className="mt-4 pill border-gold/40 text-gold">
+                <StarIcon size={12} />
+                Trip admin
+              </span>
+            ) : null}
           </div>
+        </section>
 
-          <div className="text-center">
-            {session.playerId === player.id ? (
-              <Link href="/profile" className="btn-primary">
-                Edit Your Profile
-              </Link>
-            ) : (
-              <p className="text-gray-600 text-sm">
-                You can view {player.name.split(' ')[0]}'s profile here.
-              </p>
-            )}
+        <section className="px-4 pt-6">
+          <h2 className="label mb-2">Arrival</h2>
+          <div className="card">
+            <Field
+              label="Date"
+              value={player.arrivalDate ? player.arrivalDate.toLocaleDateString() : null}
+            />
+            <Field label="Time"    value={player.arrivalTime} />
+            <Field label="Airport" value={player.arrivalAirport} />
+            <Field label="Flight"  value={player.arrivalFlight} />
           </div>
-        </div>
-      </div>
+        </section>
+
+        <section className="px-4 pt-4">
+          <h2 className="label mb-2">Departure</h2>
+          <div className="card">
+            <Field
+              label="Date"
+              value={player.departureDate ? player.departureDate.toLocaleDateString() : null}
+            />
+            <Field label="Time"    value={player.departureTime} />
+            <Field label="Airport" value={player.departureAirport} />
+            <Field label="Flight"  value={player.departureFlight} />
+          </div>
+        </section>
+
+        {session.playerId === player.id ? (
+          <section className="px-4 pt-6">
+            <Link href="/profile" className="btn-primary w-full">
+              Edit profile
+            </Link>
+          </section>
+        ) : null}
+      </main>
+      <BottomTabBar isAdmin={currentPlayer?.isAdmin} />
     </>
   );
 }

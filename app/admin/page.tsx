@@ -1,9 +1,19 @@
 import { requireAdmin } from '@/lib/auth';
-import Header from '@/components/Header';
-import { PrismaClient } from '@prisma/client';
+import AppHeader from '@/components/AppHeader';
+import BottomTabBar from '@/components/BottomTabBar';
+import {
+  MailIcon,
+  HouseIcon,
+  CalendarIcon,
+  TrophyIcon,
+  UserIcon,
+  ChatIcon,
+} from '@/components/icons';
+import { prisma } from '@/lib/db';
 import Link from 'next/link';
+import type { ComponentType } from 'react';
 
-const prisma = new PrismaClient();
+export const dynamic = 'force-dynamic';
 
 export default async function AdminPage() {
   const session = await requireAdmin();
@@ -12,107 +22,73 @@ export default async function AdminPage() {
     where: { id: session.playerId },
   });
 
-  const players = await prisma.player.findMany();
-  const uninvitedPlayers = players.filter((p) => !p.inviteSent);
-  const rounds = await prisma.round.findMany();
+  const [players, rounds, teams, meals, matchesTotal] = await Promise.all([
+    prisma.player.findMany(),
+    prisma.round.findMany(),
+    prisma.ryderCupTeam.findMany({ include: { members: true } }),
+    prisma.mealReservation.count(),
+    prisma.match.count(),
+  ]);
+
+  const uninvited = players.filter((p) => !p.inviteSent).length;
+  const assigned = teams.reduce((sum, t) => sum + t.members.length, 0);
+
+  const sections: Array<{
+    href: string;
+    label: string;
+    sub: string;
+    Icon: ComponentType<{ size?: number; className?: string }>;
+  }> = [
+    { href: '/admin/ryder-cup', label: 'Ryder Cup',   sub: `${assigned}/${players.length} assigned · ${matchesTotal} matches`, Icon: TrophyIcon  },
+    { href: '/admin/players',   label: 'Players',     sub: `${players.length} total · ${uninvited} uninvited`,                 Icon: UserIcon    },
+    { href: '/admin/rounds',    label: 'Rounds',      sub: `${rounds.length} scheduled`,                                        Icon: CalendarIcon },
+    { href: '/admin/dinners',   label: 'Meals',       sub: `${meals} reservations`,                                            Icon: ChatIcon    },
+    { href: '/admin/housing',   label: 'Housing',     sub: '4 villas',                                                          Icon: HouseIcon   },
+    { href: '/admin/invites',   label: 'Invites',     sub: `${uninvited} pending`,                                              Icon: MailIcon    },
+  ];
 
   return (
     <>
-      <Header player={{ id: player!.id, name: player!.name, isAdmin: player!.isAdmin }} />
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold text-cup-navy mb-8">⚙️ Admin Panel</h1>
+      <AppHeader title="Admin" backHref="/dashboard" />
+      <main className="bg-ink-0 pb-nav">
+        <section className="px-4 pt-4 grid grid-cols-2 gap-3">
+          {sections.map(({ href, label, sub, Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="card border-gold/30 hover:border-gold transition tap-highlight-none"
+            >
+              <div className="w-9 h-9 rounded-lg bg-gold/10 border border-gold/30 flex items-center justify-center text-gold mb-3">
+                <Icon size={18} />
+              </div>
+              <p className="font-semibold text-gold">{label}</p>
+              <p className="text-xs text-fg-3 mt-0.5">{sub}</p>
+            </Link>
+          ))}
+        </section>
 
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          <Link
-            href="/admin/invites"
-            className="card bg-cup-gold bg-opacity-10 hover:shadow-lg hover:scale-105 transition-all cursor-pointer border-2 border-cup-gold"
-          >
-            <h2 className="text-xl font-bold text-cup-gold mb-2">📧 Send Invites</h2>
-            <p className="text-gray-600 mb-4">
-              {uninvitedPlayers.length} player(s) waiting for invites
-            </p>
-            <p className="text-sm text-gray-600">
-              Send magic links to players to start their signup
-            </p>
-          </Link>
-
-          <Link
-            href="/admin/teams"
-            className="card bg-cup-gold bg-opacity-10 hover:shadow-lg hover:scale-105 transition-all cursor-pointer border-2 border-cup-gold"
-          >
-            <h2 className="text-xl font-bold text-cup-gold mb-2">👥 Team Setup</h2>
-            <p className="text-gray-600 mb-4">
-              {rounds.length} round(s) configured
-            </p>
-            <p className="text-sm text-gray-600">
-              Set teams and groups for each round
-            </p>
-          </Link>
-
-          <Link
-            href="/admin/scoring"
-            className="card bg-cup-gold bg-opacity-10 hover:shadow-lg hover:scale-105 transition-all cursor-pointer border-2 border-cup-gold"
-          >
-            <h2 className="text-xl font-bold text-cup-gold mb-2">📊 Scoring</h2>
-            <p className="text-gray-600 mb-4">
-              Enter match results & scores
-            </p>
-            <p className="text-sm text-gray-600">
-              Update hole-by-hole scoring in real-time
-            </p>
-          </Link>
-
-          <Link
-            href="/admin/settings"
-            className="card bg-cup-gold bg-opacity-10 hover:shadow-lg hover:scale-105 transition-all cursor-pointer border-2 border-cup-gold"
-          >
-            <h2 className="text-xl font-bold text-cup-gold mb-2">⚙️ Settings</h2>
-            <p className="text-gray-600 mb-4">
-              Manage rounds & formats
-            </p>
-            <p className="text-sm text-gray-600">
-              Configure courses, tee times, RC vs casual
-            </p>
-          </Link>
-        </div>
-
-        <div className="card">
-          <h2 className="text-2xl font-bold text-cup-navy mb-4">Quick Stats</h2>
-          <div className="grid md:grid-cols-4 gap-4">
-            <div className="bg-cup-green bg-opacity-10 rounded p-4 text-center">
-              <p className="text-3xl font-bold text-cup-green">{players.length}</p>
-              <p className="text-gray-600 text-sm">Total Players</p>
-            </div>
-
-            <div className="bg-cup-green bg-opacity-10 rounded p-4 text-center">
-              <p className="text-3xl font-bold text-cup-green">
-                {players.filter((p) => p.inviteSent).length}
-              </p>
-              <p className="text-gray-600 text-sm">Invited</p>
-            </div>
-
-            <div className="bg-cup-green bg-opacity-10 rounded p-4 text-center">
-              <p className="text-3xl font-bold text-cup-green">
-                {rounds.length}
-              </p>
-              <p className="text-gray-600 text-sm">Rounds</p>
-            </div>
-
-            <div className="bg-cup-green bg-opacity-10 rounded p-4 text-center">
-              <p className="text-3xl font-bold text-cup-green">
-                {rounds.filter((r) => r.isRyderCup).length}
-              </p>
-              <p className="text-gray-600 text-sm">RC Rounds</p>
-            </div>
+        <section className="px-4 pt-6">
+          <h2 className="label mb-3">Stats</h2>
+          <div className="grid grid-cols-2 gap-3">
+            <Stat label="Players"  value={players.length} />
+            <Stat label="Invited"  value={players.filter((p) => p.inviteSent).length} />
+            <Stat label="Rounds"   value={rounds.length} />
+            <Stat label="RC rounds" value={rounds.filter((r) => r.isRyderCup).length} />
+            <Stat label="Matches"  value={matchesTotal} />
+            <Stat label="Meals"    value={meals} />
           </div>
-        </div>
-
-        <div className="mt-12 text-center">
-          <Link href="/dashboard" className="btn-outline">
-            ← Back to Dashboard
-          </Link>
-        </div>
-      </div>
+        </section>
+      </main>
+      <BottomTabBar isAdmin={player?.isAdmin} />
     </>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="card text-center">
+      <p className="text-3xl font-mono font-semibold text-masters-glow">{value}</p>
+      <p className="text-[10px] uppercase tracking-wider text-fg-3 mt-1">{label}</p>
+    </div>
   );
 }

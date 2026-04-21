@@ -1,8 +1,8 @@
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
-import { PrismaClient } from '@prisma/client';
+import { redirect } from 'next/navigation';
+import { prisma } from '@/lib/db';
 
-const prisma = new PrismaClient();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 const MAGIC_LINK_SECRET = process.env.MAGIC_LINK_SECRET || 'dev-magic-secret';
@@ -111,7 +111,7 @@ export async function verifyMagicLink(token: string): Promise<string | null> {
 export async function requireAuth(): Promise<AuthSession> {
   const session = await getSession();
   if (!session) {
-    throw new Error('Unauthorized');
+    redirect('/');
   }
   return session;
 }
@@ -119,7 +119,7 @@ export async function requireAuth(): Promise<AuthSession> {
 export async function requireAdmin(): Promise<AuthSession> {
   const session = await getSession();
   if (!session) {
-    throw new Error('Unauthorized');
+    redirect('/');
   }
 
   const player = await prisma.player.findUnique({
@@ -127,7 +127,7 @@ export async function requireAdmin(): Promise<AuthSession> {
   });
 
   if (!player?.isAdmin) {
-    throw new Error('Admin access required');
+    redirect('/dashboard');
   }
 
   return session;

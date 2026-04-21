@@ -1,20 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/db';
 
-const prisma = new PrismaClient();
 
 export async function PUT(request: NextRequest) {
   try {
     const session = await requireAuth();
     const data = await request.json();
 
-    // Note: name cannot be updated, only other profile fields
+    // Note: name and handicap cannot be updated by players.
+    // Handicap is admin-only — see /api/admin/players/[id]/handicap.
     const player = await prisma.player.update({
       where: { id: session.playerId },
       data: {
         nickname: data.nickname !== undefined ? data.nickname : undefined,
-        handicap: data.handicap ? parseFloat(data.handicap) : undefined,
         arrivalDate: data.arrivalDate ? new Date(data.arrivalDate) : null,
         arrivalTime: data.arrivalTime || null,
         arrivalAirport: data.arrivalAirport || null,

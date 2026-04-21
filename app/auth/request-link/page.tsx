@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function RequestMagicLinkPage() {
   const [email, setEmail] = useState('');
@@ -28,7 +29,7 @@ export default function RequestMagicLinkPage() {
       if (!res.ok) {
         setError(data.error || 'Failed to send magic link');
       } else {
-        setSuccess('Magic link sent to your email!');
+        setSuccess('Magic link sent — check your email.');
         setEmail('');
         setTimeout(() => router.push('/'), 3000);
       }
@@ -40,35 +41,48 @@ export default function RequestMagicLinkPage() {
   };
 
   return (
-    <div className="min-h-screen golf-bg flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
-        <h1 className="text-3xl font-bold text-cup-navy mb-2 text-center">The Cup</h1>
-        <p className="text-center text-gray-600 mb-6">Sea Pines 2026</p>
+    <main className="min-h-screen bg-ink-0 flex items-center justify-center px-4 relative overflow-hidden">
+      <div
+        aria-hidden="true"
+        className="absolute -top-40 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full blur-3xl opacity-15 bg-masters"
+      />
+
+      <div className="relative card w-full max-w-sm">
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-block">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gold mb-2">
+              Sea Pines 2026
+            </p>
+            <h1 className="text-3xl font-bold">
+              The <span className="text-masters-glow">Cup</span>
+            </h1>
+          </Link>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email Address
-            </label>
+            <label htmlFor="email" className="label">Email</label>
             <input
               id="email"
               type="email"
+              inputMode="email"
+              autoComplete="email"
               required
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="your.email@example.com"
-              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-cup-green"
+              placeholder="you@example.com"
+              className="input"
             />
           </div>
 
           {error && (
-            <div className="p-3 bg-red-100 text-red-700 rounded-md text-sm">
+            <div className="p-3 bg-danger/10 border border-danger/30 text-danger rounded-xl text-sm">
               {error}
             </div>
           )}
 
           {success && (
-            <div className="p-3 bg-green-100 text-green-700 rounded-md text-sm">
+            <div className="p-3 bg-success/10 border border-success/30 text-success rounded-xl text-sm">
               {success}
             </div>
           )}
@@ -76,16 +90,16 @@ export default function RequestMagicLinkPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full btn-primary disabled:opacity-50"
+            className="btn-primary w-full"
           >
-            {loading ? 'Sending...' : 'Send Magic Link'}
+            {loading ? 'Sending…' : 'Send magic link'}
           </button>
         </form>
 
-        <p className="text-center text-gray-600 text-sm mt-6">
-          Check your email for a sign-in link. The link expires in 24 hours.
+        <p className="text-center text-fg-3 text-xs mt-6">
+          Check your email for a sign-in link. Expires in 24 hours.
         </p>
       </div>
-    </div>
+    </main>
   );
 }

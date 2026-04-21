@@ -1,10 +1,33 @@
 import { requireAuth } from '@/lib/auth';
-import Header from '@/components/Header';
+import AppHeader from '@/components/AppHeader';
+import BottomTabBar from '@/components/BottomTabBar';
+import PlayerAvatar from '@/components/PlayerAvatar';
+import SectionCard from '@/components/SectionCard';
+import {
+  CalendarIcon,
+  TrophyIcon,
+  UsersIcon,
+  HouseIcon,
+  ChatIcon,
+  UserIcon,
+  SettingsIcon,
+  MailIcon,
+  ArrowRightIcon,
+} from '@/components/icons';
 import Link from 'next/link';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/db';
 import { redirect } from 'next/navigation';
+import type { ComponentType } from 'react';
 
-const prisma = new PrismaClient();
+export const dynamic = 'force-dynamic';
+
+function formatRoundDate(date: Date) {
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+}
 
 export default async function DashboardPage() {
   try {
@@ -29,126 +52,123 @@ export default async function DashboardPage() {
       take: 3,
     });
 
+    const firstName = player.nickname || player.name.split(' ')[0];
+
+    const quickLinks: Array<{
+      href: string;
+      label: string;
+      sub: string;
+      Icon: ComponentType<{ size?: number; className?: string }>;
+    }> = [
+      { href: '/schedule',    label: 'Schedule',    sub: '8 rounds',      Icon: CalendarIcon },
+      { href: '/ryder-cup',   label: 'Ryder Cup',   sub: 'Live scoring',  Icon: TrophyIcon   },
+      { href: '/players',     label: 'Players',     sub: 'Roster',        Icon: UsersIcon    },
+      { href: '/housing',     label: 'Housing',     sub: '4 villas',      Icon: HouseIcon    },
+      { href: '/dinners',     label: 'Meals',       sub: 'Lunch + dinner', Icon: MailIcon    },
+      { href: '/chat',        label: 'Chat',        sub: 'Team feed',     Icon: ChatIcon     },
+      { href: '/profile',     label: 'Profile',     sub: 'Your info',     Icon: UserIcon     },
+    ];
+
     return (
       <>
-        <Header player={{ id: player.id, name: player.name, isAdmin: player.isAdmin }} />
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <h1 className="text-4xl font-bold text-cup-navy mb-8">
-            Welcome, {player.nickname || player.name.split(' ')[0]}! ⛳
-          </h1>
-
-          <div className="grid md:grid-cols-3 gap-6 mb-8">
-            <Link
-              href="/schedule"
-              className="card hover:shadow-lg hover:scale-105 transition-all cursor-pointer"
-            >
-              <h2 className="text-xl font-bold text-cup-green mb-2">📅 Schedule</h2>
-              <p className="text-gray-600">View rounds, tee times & groups</p>
-            </Link>
-
-            <Link
-              href="/leaderboard"
-              className="card hover:shadow-lg hover:scale-105 transition-all cursor-pointer"
-            >
-              <h2 className="text-xl font-bold text-cup-green mb-2">🏆 Leaderboard</h2>
-              <p className="text-gray-600">Track team standings & scores</p>
-            </Link>
-
-            <Link
-              href="/players"
-              className="card hover:shadow-lg hover:scale-105 transition-all cursor-pointer"
-            >
-              <h2 className="text-xl font-bold text-cup-green mb-2">👥 Players</h2>
-              <p className="text-gray-600">Browse the roster & handicaps</p>
-            </Link>
-
-            <Link
-              href="/profile"
-              className="card hover:shadow-lg hover:scale-105 transition-all cursor-pointer"
-            >
-              <h2 className="text-xl font-bold text-cup-green mb-2">👤 My Profile</h2>
-              <p className="text-gray-600">Update your info & availability</p>
-            </Link>
-
-            <Link
-              href="/housing"
-              className="card hover:shadow-lg hover:scale-105 transition-all cursor-pointer"
-            >
-              <h2 className="text-xl font-bold text-cup-green mb-2">🏠 Housing</h2>
-              <p className="text-gray-600">Villa assignments & addresses</p>
-            </Link>
-
-            <Link
-              href="/chat"
-              className="card hover:shadow-lg hover:scale-105 transition-all cursor-pointer"
-            >
-              <h2 className="text-xl font-bold text-cup-green mb-2">💬 Chat</h2>
-              <p className="text-gray-600">Team chat & announcements</p>
-            </Link>
-
-            {player.isAdmin && (
-              <Link
-                href="/admin"
-                className="card bg-cup-gold bg-opacity-10 hover:shadow-lg hover:scale-105 transition-all cursor-pointer"
-              >
-                <h2 className="text-xl font-bold text-cup-gold mb-2">⚙️ Admin</h2>
-                <p className="text-gray-600">Manage the trip</p>
-              </Link>
-            )}
-          </div>
-
-          {nextRound && (
-            <div className="card bg-cup-green text-white mb-8">
-              <h2 className="text-2xl font-bold mb-4">Next Round</h2>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-cup-gold font-semibold">
-                    {nextRound.dayOfWeek}, {nextRound.date.toLocaleDateString()}
-                  </p>
-                  <p className="text-lg mt-2">{nextRound.course}</p>
-                  <p className="text-sm text-gray-200 mt-1">{nextRound.timeSlot} · {nextRound.teeTime}</p>
-                </div>
-                <div>
-                  <p className="text-cup-gold font-semibold mb-2">Format</p>
-                  <p className="text-lg">{nextRound.format}</p>
-                  <p className="text-sm text-gray-200 mt-2">
-                    {nextRound.isRyderCup ? '🏆 Ryder Cup' : '⚪ Casual'}
-                  </p>
-                </div>
+        <AppHeader title="The Cup" />
+        <main className="bg-ink-0 pb-nav">
+          <section className="px-4 pt-6 pb-4">
+            <div className="flex items-center gap-3">
+              <PlayerAvatar name={player.name} photoUrl={player.photoUrl} size="lg" />
+              <div>
+                <p className="text-xs uppercase tracking-wider text-fg-3">Welcome back</p>
+                <h1 className="text-2xl font-semibold">{firstName}</h1>
               </div>
             </div>
-          )}
+          </section>
 
-          {announcements.length > 0 && (
-            <div className="card">
-              <h2 className="text-2xl font-bold text-cup-navy mb-4">📢 Latest Announcements</h2>
-              <div className="space-y-4">
-                {announcements.map((ann) => (
-                  <div key={ann.id} className="border-l-4 border-cup-gold pl-4 py-2">
-                    <h3 className="font-bold text-cup-navy">{ann.title}</h3>
-                    <p className="text-gray-600 text-sm mt-1">{ann.content}</p>
-                    <p className="text-gray-400 text-xs mt-2">
-                      {ann.createdAt.toLocaleDateString()}
+          {nextRound ? (
+            <section className="px-4 pb-4">
+              <SectionCard tone="gold" className="relative overflow-hidden">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-widest text-gold">
+                      Next round
+                    </p>
+                    <p className="text-xl font-semibold mt-1">{nextRound.course}</p>
+                    <p className="text-sm text-fg-2 mt-0.5">
+                      {formatRoundDate(nextRound.date)} · {nextRound.teeTime}
                     </p>
                   </div>
+                  <span
+                    className={`pill ${
+                      nextRound.isRyderCup
+                        ? 'border-masters/60 text-masters-glow'
+                        : 'border-ink-3 text-fg-2'
+                    }`}
+                  >
+                    {nextRound.isRyderCup ? 'Ryder Cup' : 'Casual'}
+                  </span>
+                </div>
+                <div className="mt-4 flex items-center justify-between text-sm">
+                  <span className="text-fg-2">{nextRound.format}</span>
+                  <Link
+                    href="/schedule"
+                    className="text-masters-glow font-semibold inline-flex items-center gap-1"
+                  >
+                    View schedule
+                    <ArrowRightIcon size={14} />
+                  </Link>
+                </div>
+              </SectionCard>
+            </section>
+          ) : null}
+
+          <section className="px-4 pb-6">
+            <h2 className="label mb-3">Quick actions</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {quickLinks.map(({ href, label, sub, Icon }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="card hover:border-fg-3 transition tap-highlight-none"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-ink-2 border border-ink-3 flex items-center justify-center text-fg-2 mb-3">
+                    <Icon size={18} />
+                  </div>
+                  <p className="font-semibold">{label}</p>
+                  <p className="text-xs text-fg-3 mt-0.5">{sub}</p>
+                </Link>
+              ))}
+              {player.isAdmin ? (
+                <Link
+                  href="/admin"
+                  className="card border-gold/40 hover:border-gold transition tap-highlight-none"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-gold/10 border border-gold/30 flex items-center justify-center text-gold mb-3">
+                    <SettingsIcon size={18} />
+                  </div>
+                  <p className="font-semibold text-gold">Admin</p>
+                  <p className="text-xs text-fg-3 mt-0.5">Manage the trip</p>
+                </Link>
+              ) : null}
+            </div>
+          </section>
+
+          {announcements.length > 0 ? (
+            <section className="px-4 pb-6">
+              <h2 className="label mb-3">Latest announcements</h2>
+              <div className="space-y-3">
+                {announcements.map((ann) => (
+                  <SectionCard key={ann.id}>
+                    <h3 className="font-semibold">{ann.title}</h3>
+                    <p className="text-sm text-fg-2 mt-1">{ann.content}</p>
+                    <p className="text-[11px] text-fg-3 mt-3">
+                      {ann.createdAt.toLocaleDateString()}
+                    </p>
+                  </SectionCard>
                 ))}
               </div>
-              <Link
-                href="/chat"
-                className="text-cup-green font-semibold hover:underline mt-4 inline-block"
-              >
-                View all announcements →
-              </Link>
-            </div>
-          )}
-
-          <div className="card bg-cup-navy text-white">
-            <h3 className="font-bold text-lg mb-2">Pro Tip</h3>
-            <p>
-              Check your profile to set your availability for each round. The admin will use this to set up groups and teams!
-            </p>
-          </div>
-        </div>
+            </section>
+          ) : null}
+        </main>
+        <BottomTabBar isAdmin={player.isAdmin} />
       </>
     );
   } catch (error) {

@@ -1,9 +1,12 @@
 import { requireAuth } from '@/lib/auth';
-import Header from '@/components/Header';
-import { PrismaClient } from '@prisma/client';
-import Link from 'next/link';
+import AppHeader from '@/components/AppHeader';
+import BottomTabBar from '@/components/BottomTabBar';
+import SectionCard from '@/components/SectionCard';
+import { prisma } from '@/lib/db';
 
-const prisma = new PrismaClient();
+export const dynamic = 'force-dynamic';
+
+const DAY_ORDER = ['Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 
 export default async function SchedulePage() {
   const session = await requireAuth();
@@ -12,104 +15,137 @@ export default async function SchedulePage() {
     where: { id: session.playerId },
   });
 
-  const rounds = await prisma.round.findMany({
-    orderBy: { date: 'asc' },
-    include: {
-      groups: {
-        include: {
-          matches: {
-            include: {
-              player1: true,
-              player2: true,
-              player3: true,
-              player4: true,
-            },
+  const [rounds, totalPlayers] = await Promise.all([
+    prisma.round.findMany({
+      orderBy: { date: 'asc' },
+      include: {
+        matches: {
+          orderBy: { matchNumber: 'asc' },
+          include: {
+            teamA: true,
+            teamB: true,
+            players: { include: { player: true } },
           },
         },
+        availabilities: true,
       },
-    },
-  });
+    }),
+    prisma.player.count(),
+  ]);
+
+  const days = Array.from(new Set(rounds.map((r) => r.dayOfWeek))).sort(
+    (a, b) => DAY_ORDER.indexOf(a as any) - DAY_ORDER.indexOf(b as any),
+  );
 
   return (
     <>
-      <Header player={{ id: player!.id, name: player!.name, isAdmin: player!.isAdmin }} />
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold text-cup-navy mb-8">📅 Schedule</h1>
+      <AppHeader title="Schedule" />
+      <main className="bg-ink-0 pb-nav">
+        {/* Day pills carousel */}
+        <div className="sticky top-14 z-20 bg-ink-0/90 backdrop-blur-md border-b border-ink-3">
+          <div className="flex gap-2 overflow-x-auto scrollbar-none px-4 py-3">
+            {days.map((day) => (
+              <a
+                key={day}
+                href={`#day-${day}`}
+                className="pill shrink-0 border-ink-3 hover:border-masters hover:text-masters-glow transition"
+              >
+                {day}
+              </a>
+            ))}
+          </div>
+        </div>
 
-        <div className="space-y-8">
+        <div className="px-4 pt-4 space-y-4">
           {rounds.map((round) => (
-            <div key={round.id} className="card">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+            <SectionCard
+              key={round.id}
+              id={`day-${round.dayOfWeek}`}
+              as="section"
+              tone={round.isRyderCup ? 'masters' : 'default'}
+              className="scroll-mt-32"
+            >
+              <div className="flex items-start justify-between gap-3 mb-3">
                 <div>
-                  <h2 className="text-2xl font-bold text-cup-navy">
+                  <p className="text-[11px] uppercase tracking-widest text-fg-3">
                     Round {round.roundNumber} · {round.dayOfWeek}
-                  </h2>
-                  <p className="text-gray-600">
-                    {round.date.toLocaleDateString('en-US', {
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })}
                   </p>
+                  <h2 className="text-lg font-semibold mt-0.5">{round.course}</h2>
+                  <p className="text-sm text-fg-2 mt-0.5">{round.teeTime}</p>
                 </div>
-                <div className="mt-4 md:mt-0 text-right">
-                  <p className="font-bold text-cup-green">{round.course}</p>
-                  <p className="text-sm text-gray-600">{round.teeTime}</p>
-                  <p className="text-xs mt-2">
-                    {round.isRyderCup ? (
-                      <span className="text-cup-green font-bold">🏆 Ryder Cup</span>
-                    ) : (
-                      <span className="text-gray-500">⚪ Casual</span>
-                    )}
-                  </p>
-                </div>
+                <span
+                  className={`pill ${
+                    round.isRyderCup
+                      ? 'border-masters/60 text-masters-glow'
+                      : 'border-ink-3 text-fg-2'
+                  }`}
+                >
+                  {round.isRyderCup ? 'Ryder Cup' : 'Casual'}
+                </span>
               </div>
 
-              <div className="mb-4">
-                <p className="text-sm text-gray-600">
-                  <span className="font-semibold">{round.format}</span>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs text-fg-3 uppercase tracking-wider">
+                  {round.format}
                 </p>
+                {(() => {
+                  const playing = round.availabilities.filter((a) => a.available).length;
+                  const isShort = playing < totalPlayers;
+                  return (
+                    <span
+                      className={`pill ${
+                        isShort ? 'border-danger/40 text-danger' : 'border-ink-3 text-fg-2'
+                      }`}
+                    >
+                      {playing}/{totalPlayers} playing
+                    </span>
+                  );
+                })()}
               </div>
 
-              {round.groups.length > 0 ? (
-                <div className="grid md:grid-cols-2 gap-4">
-                  {round.groups.map((group) => (
-                    <div key={group.id} className="bg-gray-50 rounded p-4">
-                      <h3 className="font-bold text-cup-navy mb-3">Group {group.groupNumber}</h3>
-                      {group.matches.length > 0 ? (
-                        <div className="space-y-2 text-sm">
-                          {group.matches.map((match) => (
-                            <div key={match.id} className="flex gap-2">
-                              <div className="flex-1">
-                                <p className="font-semibold text-xs">
-                                  {match.player1.name} & {match.player2.name}
-                                  {match.player3 && ` (vs ${match.player3.name}`}
-                                  {match.player4 && ` & ${match.player4.name}`}
-                                  {match.player3 && ')'}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
+              {round.matches.length > 0 ? (
+                <div className="space-y-2">
+                  {round.matches.map((match) => {
+                    const sideA = match.players.filter((p) => p.side === 'A');
+                    const sideB = match.players.filter((p) => p.side === 'B');
+                    return (
+                      <div
+                        key={match.id}
+                        className="bg-ink-2 border border-ink-3 rounded-xl p-3"
+                      >
+                        <p className="text-[10px] uppercase tracking-wider text-fg-3 mb-2">
+                          Match {match.matchNumber}
+                        </p>
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wider text-teamA/80 font-semibold">
+                              {match.teamA.name}
+                            </p>
+                            <p className="mt-0.5">
+                              {sideA.map((mp) => mp.player.name).join(' & ') || '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wider text-teamB/80 font-semibold">
+                              {match.teamB.name}
+                            </p>
+                            <p className="mt-0.5">
+                              {sideB.map((mp) => mp.player.name).join(' & ') || '—'}
+                            </p>
+                          </div>
                         </div>
-                      ) : (
-                        <p className="text-gray-500 text-sm">Groups TBD</p>
-                      )}
-                    </div>
-                  ))}
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
-                <p className="text-gray-500">Groups not yet assigned</p>
+                <p className="text-sm text-fg-3 italic">Pairings TBD</p>
               )}
-            </div>
+            </SectionCard>
           ))}
         </div>
-
-        <div className="mt-12 text-center">
-          <Link href="/dashboard" className="btn-outline">
-            ← Back to Dashboard
-          </Link>
-        </div>
-      </div>
+      </main>
+      <BottomTabBar isAdmin={player?.isAdmin} />
     </>
   );
 }

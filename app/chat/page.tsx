@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import Header from '@/components/Header';
+import AppHeader from '@/components/AppHeader';
+import BottomTabBar from '@/components/BottomTabBar';
 import PlayerAvatar from '@/components/PlayerAvatar';
 
 interface Message {
@@ -83,10 +84,11 @@ export default function ChatPage() {
   if (loading) {
     return (
       <>
-        <Header player={undefined} />
-        <div className="flex justify-center items-center min-h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-cup-green border-t-transparent"></div>
-        </div>
+        <AppHeader title="Chat" />
+        <main className="min-h-[50vh] flex items-center justify-center bg-ink-0">
+          <div className="animate-spin rounded-full h-10 w-10 border-4 border-masters border-t-transparent" />
+        </main>
+        <BottomTabBar />
       </>
     );
   }
@@ -94,50 +96,56 @@ export default function ChatPage() {
   if (!player) {
     return (
       <>
-        <Header player={undefined} />
-        <div className="text-center py-20">
-          <p className="text-red-600">Unable to load chat</p>
-        </div>
+        <AppHeader title="Chat" />
+        <main className="min-h-[50vh] flex items-center justify-center bg-ink-0">
+          <p className="text-danger text-sm">Unable to load chat.</p>
+        </main>
+        <BottomTabBar />
       </>
     );
   }
 
   return (
     <>
-      <Header player={player} />
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold text-cup-navy mb-8">💬 Team Chat</h1>
-
-        <div className="card h-96 flex flex-col overflow-hidden mb-4">
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.length === 0 ? (
-              <p className="text-center text-gray-500 py-12">
-                No messages yet. Start the conversation!
-              </p>
-            ) : (
-              messages.map(msg => (
+      <AppHeader title="Team chat" />
+      <main className="bg-ink-0 pb-[10.5rem]">
+        <div className="px-3 pt-4 space-y-3">
+          {messages.length === 0 ? (
+            <p className="text-center text-fg-3 text-sm py-12">
+              No messages yet. Start the conversation.
+            </p>
+          ) : (
+            messages.map((msg) => {
+              const mine = msg.player.id === player.id;
+              return (
                 <div
                   key={msg.id}
-                  className={`flex gap-3 ${msg.player.id === player.id ? 'justify-end' : ''}`}
+                  className={`flex gap-2 ${mine ? 'flex-row-reverse' : ''}`}
                 >
-                  {msg.player.id !== player.id && (
-                    <PlayerAvatar name={msg.player.name} photoUrl={msg.player.photoUrl} size="sm" />
-                  )}
+                  {!mine ? (
+                    <PlayerAvatar
+                      name={msg.player.name}
+                      photoUrl={msg.player.photoUrl}
+                      size="sm"
+                    />
+                  ) : null}
 
                   <div
-                    className={`max-w-xs ${
-                      msg.player.id === player.id
-                        ? 'bg-cup-green text-white rounded-2xl rounded-br-none'
-                        : 'bg-gray-100 text-gray-800 rounded-2xl rounded-bl-none'
-                    } px-4 py-2`}
+                    className={`max-w-[75%] px-3.5 py-2 rounded-2xl ${
+                      mine
+                        ? 'bg-masters text-fg-1 rounded-br-md'
+                        : 'bg-ink-2 text-fg-1 rounded-bl-md border border-ink-3'
+                    }`}
                   >
-                    {msg.player.id !== player.id && (
-                      <p className="font-semibold text-xs mb-1 opacity-75">
+                    {!mine ? (
+                      <p className="text-[11px] font-semibold text-fg-2 mb-0.5">
                         {msg.player.name}
                       </p>
-                    )}
-                    <p className="break-words">{msg.content}</p>
-                    <p className="text-xs mt-1 opacity-70">
+                    ) : null}
+                    <p className="text-sm break-words whitespace-pre-wrap">
+                      {msg.content}
+                    </p>
+                    <p className={`text-[10px] mt-1 ${mine ? 'text-fg-1/70' : 'text-fg-3'}`}>
                       {new Date(msg.createdAt).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit',
@@ -145,29 +153,36 @@ export default function ChatPage() {
                     </p>
                   </div>
                 </div>
-              ))
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          <form onSubmit={handleSendMessage} className="border-t p-4 flex gap-2">
-            <input
-              type="text"
-              value={newMessage}
-              onChange={e => setNewMessage(e.target.value)}
-              placeholder="Type a message..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-cup-green"
-            />
-            <button
-              type="submit"
-              disabled={sending || !newMessage.trim()}
-              className="btn-primary rounded-full px-6 disabled:opacity-50"
-            >
-              {sending ? '...' : 'Send'}
-            </button>
-          </form>
+              );
+            })
+          )}
+          <div ref={messagesEndRef} />
         </div>
-      </div>
+      </main>
+
+      {/* Fixed input bar, sits just above the bottom tab bar */}
+      <form
+        onSubmit={handleSendMessage}
+        className="glass fixed left-0 right-0 z-30 px-3 py-2 flex items-center gap-2"
+        style={{ bottom: 'calc(env(safe-area-inset-bottom, 0) + 3.5rem)' }}
+      >
+        <input
+          type="text"
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          placeholder="Message"
+          className="input flex-1 py-2.5 rounded-full px-4"
+        />
+        <button
+          type="submit"
+          disabled={sending || !newMessage.trim()}
+          className="btn-primary rounded-full px-5 py-2.5"
+        >
+          {sending ? '…' : 'Send'}
+        </button>
+      </form>
+
+      <BottomTabBar isAdmin={player.isAdmin} />
     </>
   );
 }

@@ -10,51 +10,99 @@
 
 html {
   scroll-behavior: smooth;
+  color-scheme: dark;
+  background-color: #0A0A0A;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
-    'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  @apply bg-ink-0 text-fg-1 font-sans antialiased;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f5f5f5;
-  color: #333;
+  min-height: 100dvh;
+  min-height: 100vh;
 }
 
-.btn-primary {
-  @apply bg-cup-green text-white px-4 py-2 rounded font-semibold hover:bg-opacity-90 transition-all;
-}
-
-.btn-secondary {
-  @apply bg-cup-navy text-white px-4 py-2 rounded font-semibold hover:bg-opacity-90 transition-all;
-}
-
-.btn-outline {
-  @apply border-2 border-cup-green text-cup-green px-4 py-2 rounded font-semibold hover:bg-cup-green hover:text-white transition-all;
-}
-
-.card {
-  @apply bg-white rounded-lg shadow-md p-4 mb-4;
-}
-
-.section-title {
-  @apply text-2xl font-bold text-cup-navy mb-4;
-}
-
-.text-gold {
-  color: #d4af37;
-}
-
-.golf-bg {
-  background: linear-gradient(135deg, #1b4d3e 0%, #2c3e50 100%);
-}
-
-@media (max-width: 768px) {
-  body {
-    font-size: 14px;
+@layer components {
+  .card {
+    @apply bg-ink-1 border border-ink-3 rounded-2xl p-4;
   }
 
-  .section-title {
-    @apply text-xl;
+  .card-elevated {
+    @apply bg-ink-2 border border-ink-3 rounded-2xl p-4;
   }
+
+  .glass {
+    @apply border border-ink-3;
+    background-color: rgba(28, 28, 30, 0.82);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 bg-masters text-fg-1 font-semibold px-4 py-3 rounded-xl hover:bg-masters-light active:scale-[0.98] transition disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 bg-ink-2 text-fg-1 font-semibold px-4 py-3 rounded-xl border border-ink-3 hover:bg-ink-3 active:scale-[0.98] transition disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 border border-masters text-masters-glow font-semibold px-4 py-3 rounded-xl hover:bg-masters/10 active:scale-[0.98] transition;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 bg-danger/15 text-danger font-semibold px-4 py-3 rounded-xl border border-danger/30 hover:bg-danger/25 active:scale-[0.98] transition;
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border border-ink-3 bg-ink-2 text-fg-2;
+  }
+
+  .input {
+    @apply w-full bg-ink-1 border border-ink-3 text-fg-1 placeholder:text-fg-3 rounded-xl px-3 py-3 focus:outline-none focus:border-masters focus:ring-2 focus:ring-masters/25 transition;
+  }
+
+  .label {
+    @apply block text-xs font-semibold text-fg-2 uppercase tracking-wider mb-1.5;
+  }
+}
+
+@layer utilities {
+  .pt-safe {
+    padding-top: calc(env(safe-area-inset-top, 0) + 0.75rem);
+  }
+  .pb-safe {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0) + 0.75rem);
+  }
+  .pb-nav {
+    /* Reserves space under content so the fixed bottom tab bar never overlaps. */
+    padding-bottom: calc(env(safe-area-inset-bottom, 0) + 5.5rem);
+  }
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .skeleton {
+    background: linear-gradient(90deg, #1C1C1E 25%, #2C2C2E 50%, #1C1C1E 75%);
+    background-size: 200% 100%;
+    @apply animate-shimmer rounded;
+  }
+  .tap-highlight-none {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Autofill fixes for dark inputs on Safari/Chrome */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: #FFFFFF;
+  -webkit-box-shadow: 0 0 0 1000px #141414 inset;
+  caret-color: #FFFFFF;
+  transition: background-color 9999s ease-out 0s;
 }

@@ -1,11 +1,12 @@
 import { requireAuth } from '@/lib/auth';
-import Header from '@/components/Header';
+import AppHeader from '@/components/AppHeader';
+import BottomTabBar from '@/components/BottomTabBar';
 import PlayerAvatar from '@/components/PlayerAvatar';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/db';
 import Link from 'next/link';
 import { formatHandicap } from '@/lib/utils';
 
-const prisma = new PrismaClient();
+export const dynamic = 'force-dynamic';
 
 export default async function PlayersPage() {
   const session = await requireAuth();
@@ -21,54 +22,41 @@ export default async function PlayersPage() {
 
   return (
     <>
-      <Header player={{ id: currentPlayer!.id, name: currentPlayer!.name, isAdmin: currentPlayer!.isAdmin }} />
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold text-cup-navy mb-8">👥 Players</h1>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <AppHeader title="Players" backHref="/dashboard" />
+      <main className="bg-ink-0 pb-nav">
+        <div className="px-4 pt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
           {players.map((p) => (
             <Link
               key={p.id}
               href={`/players/${p.id}`}
-              className="card hover:shadow-lg hover:scale-105 transition-all cursor-pointer"
+              className="card flex flex-col items-center text-center hover:border-fg-3 transition tap-highlight-none"
             >
-              <div className="flex items-center gap-4 mb-4">
-                <PlayerAvatar name={p.name} photoUrl={p.photoUrl} size="lg" />
-                <div>
-                  <h3 className="font-bold text-lg text-cup-navy">
-                    {p.name}
-                  </h3>
-                  {p.nickname && (
-                    <p className="text-sm text-gray-600 italic">{p.nickname}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2 border-t pt-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Handicap</span>
-                  <span className="font-bold text-cup-green">
-                    {formatHandicap(p.handicap)}
-                  </span>
-                </div>
-
-                {p.villa && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Villa</span>
-                    <span className="font-semibold">{p.villa.name}</span>
+              <div className="w-full aspect-square rounded-xl overflow-hidden bg-ink-2 ring-1 ring-ink-3 mb-3">
+                {p.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={p.photoUrl}
+                    alt={p.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <PlayerAvatar name={p.name} photoUrl={null} size="xl" ring={false} />
                   </div>
                 )}
               </div>
+              <p className="font-semibold text-sm leading-tight">{p.name}</p>
+              {p.nickname ? (
+                <p className="text-[11px] text-fg-3 italic">"{p.nickname}"</p>
+              ) : null}
+              <p className="mt-2 font-mono text-base text-gold">
+                {formatHandicap(p.handicap)}
+              </p>
             </Link>
           ))}
         </div>
-
-        <div className="mt-12 text-center">
-          <Link href="/dashboard" className="btn-outline">
-            ← Back to Dashboard
-          </Link>
-        </div>
-      </div>
+      </main>
+      <BottomTabBar isAdmin={currentPlayer?.isAdmin} />
     </>
   );
 }
