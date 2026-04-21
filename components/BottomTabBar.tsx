@@ -90,7 +90,7 @@ export default function BottomTabBar({ isAdmin = false }: BottomTabBarProps) {
   };
 
   const moreLinks: Array<{ href: string; label: string; Icon: IconComponent }> = [
-    { href: '/players', label: 'Players', Icon: UsersIcon },
+    { href: '/players', label: 'Teams', Icon: UsersIcon },
     { href: '/housing', label: 'Housing', Icon: HouseIcon },
     { href: '/dinners', label: 'Meals',   Icon: MailIcon  },
     { href: '/profile', label: 'Profile', Icon: UserIcon  },
