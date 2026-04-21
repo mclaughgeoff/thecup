@@ -1,11 +1,11 @@
 {
-  "name": "The Cup",
-  "short_name": "The Cup",
-  "description": "Sea Pines 2026 · Ryder Cup golf trip",
+  "name": "SeaPines Cup 2026",
+  "short_name": "SeaPines Cup",
+  "description": "Annual 16-player Ryder Cup golf trip · Sea Pines, Hilton Head",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#FFFFFF",
-  "theme_color": "#4F46E5",
+  "theme_color": "#006747",
   "orientation": "portrait",
   "icons": [
     {

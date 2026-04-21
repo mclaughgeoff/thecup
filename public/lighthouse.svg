@@ -1,0 +1,55 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sea Pines lighthouse">
+  <title>Sea Pines Lighthouse</title>
+  <!-- cream background circle -->
+  <circle cx="100" cy="100" r="98" fill="#F4EAD6"/>
+
+  <!-- ground shadow -->
+  <ellipse cx="100" cy="184" rx="62" ry="3" fill="#1A1A1A" opacity="0.18"/>
+
+  <!-- Dark base plinth (two-tier) -->
+  <rect x="38" y="168" width="124" height="14" fill="#1A1A1A"/>
+  <rect x="34" y="172" width="132" height="6" fill="#1A1A1A"/>
+
+  <!-- Tower body -->
+  <rect x="72" y="58" width="56" height="112" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="1.5"/>
+
+  <!-- Red horizontal stripes -->
+  <rect x="72" y="58"  width="56" height="18" fill="#C8102E"/>
+  <rect x="72" y="94"  width="56" height="18" fill="#C8102E"/>
+  <rect x="72" y="130" width="56" height="18" fill="#C8102E"/>
+
+  <!-- Door at the base of the tower -->
+  <path d="M 94 170 L 94 156 Q 94 151 100 151 Q 106 151 106 156 L 106 170 Z" fill="#1A1A1A"/>
+
+  <!-- Small window on middle white band -->
+  <rect x="95" y="118" width="10" height="10" fill="#1A1A1A" rx="1.5"/>
+
+  <!-- Observation deck platform (overhangs) -->
+  <rect x="62" y="52" width="76" height="6" fill="#1A1A1A"/>
+
+  <!-- Deck railing -->
+  <rect x="62" y="43.5" width="76" height="1.5" fill="#1A1A1A"/>
+  <g fill="#1A1A1A">
+    <rect x="63"  y="45" width="1.5" height="7"/>
+    <rect x="73"  y="45" width="1.5" height="7"/>
+    <rect x="83"  y="45" width="1.5" height="7"/>
+    <rect x="93"  y="45" width="1.5" height="7"/>
+    <rect x="103" y="45" width="1.5" height="7"/>
+    <rect x="113" y="45" width="1.5" height="7"/>
+    <rect x="123" y="45" width="1.5" height="7"/>
+    <rect x="133.5" y="45" width="1.5" height="7"/>
+  </g>
+
+  <!-- Lantern room (glass) -->
+  <rect x="82" y="26" width="36" height="16" fill="#FFF5E0" stroke="#1A1A1A" stroke-width="1.2"/>
+  <line x1="94"  y1="26" x2="94"  y2="42" stroke="#1A1A1A" stroke-width="0.8"/>
+  <line x1="106" y1="26" x2="106" y2="42" stroke="#1A1A1A" stroke-width="0.8"/>
+
+  <!-- Red hemispherical dome -->
+  <path d="M 78 26 Q 100 2 122 26 Z" fill="#C8102E" stroke="#1A1A1A" stroke-width="1"/>
+
+  <!-- Spire -->
+  <line x1="100" y1="1" x2="100" y2="8" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round"/>
+  <!-- Finial ball -->
+  <circle cx="100" cy="10" r="2.8" fill="#1A1A1A"/>
+</svg>
