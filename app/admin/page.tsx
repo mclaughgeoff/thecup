@@ -8,6 +8,8 @@ import {
   TrophyIcon,
   UserIcon,
   ChatIcon,
+  CheckIcon,
+  ChartIcon,
 } from '@/components/icons';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
@@ -22,12 +24,13 @@ export default async function AdminPage() {
     where: { id: session.playerId },
   });
 
-  const [players, rounds, teams, meals, matchesTotal] = await Promise.all([
+  const [players, rounds, teams, meals, matchesTotal, formatsTotal] = await Promise.all([
     prisma.player.findMany(),
     prisma.round.findMany(),
     prisma.ryderCupTeam.findMany({ include: { members: true } }),
     prisma.mealReservation.count(),
     prisma.match.count(),
+    prisma.format.count(),
   ]);
 
   const uninvited = players.filter((p) => !p.inviteSent).length;
@@ -39,12 +42,14 @@ export default async function AdminPage() {
     sub: string;
     Icon: ComponentType<{ size?: number; className?: string }>;
   }> = [
-    { href: '/admin/ryder-cup', label: 'Ryder Cup',   sub: `${assigned}/${players.length} assigned · ${matchesTotal} matches`, Icon: TrophyIcon  },
-    { href: '/admin/players',   label: 'Players',     sub: `${players.length} total · ${uninvited} uninvited`,                 Icon: UserIcon    },
-    { href: '/admin/rounds',    label: 'Rounds',      sub: `${rounds.length} scheduled`,                                        Icon: CalendarIcon },
-    { href: '/admin/dinners',   label: 'Meals',       sub: `${meals} reservations`,                                            Icon: ChatIcon    },
-    { href: '/admin/housing',   label: 'Housing',     sub: '4 villas',                                                          Icon: HouseIcon   },
-    { href: '/admin/invites',   label: 'Invites',     sub: `${uninvited} pending`,                                              Icon: MailIcon    },
+    { href: '/admin/ryder-cup',     label: 'Ryder Cup',   sub: `${assigned}/${players.length} assigned · ${matchesTotal} matches`, Icon: TrophyIcon  },
+    { href: '/admin/players',       label: 'Players',     sub: `${players.length} total · ${uninvited} uninvited`,                 Icon: UserIcon    },
+    { href: '/admin/availability',  label: 'Availability',sub: `Who's playing each round`,                                         Icon: CheckIcon   },
+    { href: '/admin/rounds',        label: 'Rounds',      sub: `${rounds.length} scheduled`,                                        Icon: CalendarIcon },
+    { href: '/admin/formats',       label: 'Formats',     sub: `${formatsTotal} scoring formats`,                                   Icon: ChartIcon   },
+    { href: '/admin/dinners',       label: 'Meals',       sub: `${meals} reservations`,                                             Icon: ChatIcon    },
+    { href: '/admin/housing',       label: 'Housing',     sub: '4 villas',                                                          Icon: HouseIcon   },
+    { href: '/admin/invites',       label: 'Invites',     sub: `${uninvited} pending`,                                              Icon: MailIcon    },
   ];
 
   return (
