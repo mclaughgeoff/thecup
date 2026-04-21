@@ -53,9 +53,13 @@ interface CellDraft {
   existingId: string | null;
   sideA: string[];
   sideB: string[];
-  result: string;
-  pointsA: string;
-  pointsB: string;
+  // Results + points are surfaced read-only here. Edits happen on the
+  // Match adjustments page (admin/matches/[id]), which also handles the
+  // override / ghost / absent-player logic. Keeping the display-only
+  // values in state avoids another fetch for the saved-badge summary.
+  result: string | null;
+  pointsA: number | null;
+  pointsB: number | null;
 }
 
 const emptyCell = (matchNumber: number, teeSlotIndex: number): CellDraft => ({
@@ -64,9 +68,9 @@ const emptyCell = (matchNumber: number, teeSlotIndex: number): CellDraft => ({
   existingId: null,
   sideA: [],
   sideB: [],
-  result: '',
-  pointsA: '',
-  pointsB: '',
+  result: null,
+  pointsA: null,
+  pointsB: null,
 });
 
 export default function AdminRoundMatchesPage() {
@@ -122,9 +126,9 @@ export default function AdminRoundMatchesPage() {
                 existingId: existing.id,
                 sideA: existing.players.filter((p) => p.side === 'A').map((p) => p.playerId),
                 sideB: existing.players.filter((p) => p.side === 'B').map((p) => p.playerId),
-                result: existing.result ?? '',
-                pointsA: existing.pointsA !== null ? String(existing.pointsA) : '',
-                pointsB: existing.pointsB !== null ? String(existing.pointsB) : '',
+                result: existing.result,
+                pointsA: existing.pointsA,
+                pointsB: existing.pointsB,
               }
             : emptyCell(matchNumber, slot),
         );
@@ -184,6 +188,8 @@ export default function AdminRoundMatchesPage() {
     });
   };
 
+  // Roster-only save. Result + points are managed on the per-match
+  // Adjust page; we omit them here so they're left untouched by the PUT.
   const buildBody = (c: CellDraft) => ({
     matchNumber: c.matchNumber,
     teeSlotIndex: c.teeSlotIndex,
@@ -191,9 +197,6 @@ export default function AdminRoundMatchesPage() {
       ...c.sideA.map((playerId) => ({ playerId, side: 'A' as const })),
       ...c.sideB.map((playerId) => ({ playerId, side: 'B' as const })),
     ],
-    result: c.result || null,
-    pointsA: c.pointsA === '' ? null : parseFloat(c.pointsA),
-    pointsB: c.pointsB === '' ? null : parseFloat(c.pointsB),
   });
 
   const saveCell = async (idx: number) => {
@@ -233,7 +236,7 @@ export default function AdminRoundMatchesPage() {
     const existing = cells.filter((c) => c.existingId);
     if (existing.length === 0) {
       // Nothing saved — just blank the drafts.
-      setCells((prev) => prev.map((c) => ({ ...c, sideA: [], sideB: [], result: '', pointsA: '', pointsB: '' })));
+      setCells((prev) => prev.map((c) => ({ ...c, sideA: [], sideB: [], result: null, pointsA: null, pointsB: null })));
       return;
     }
     if (!confirm(`Delete all ${existing.length} saved matches in this round?`)) return;
@@ -262,7 +265,7 @@ export default function AdminRoundMatchesPage() {
   const clearCell = async (idx: number) => {
     const c = cells[idx];
     if (!c.existingId) {
-      setCellField(idx, { sideA: [], sideB: [], result: '', pointsA: '', pointsB: '' });
+      setCellField(idx, { sideA: [], sideB: [], result: null, pointsA: null, pointsB: null });
       return;
     }
     if (!confirm(`Delete match ${c.matchNumber}?`)) return;
@@ -400,11 +403,21 @@ export default function AdminRoundMatchesPage() {
                       <p className="text-[10px] uppercase tracking-widest text-fg-3">
                         Match {c.matchNumber}
                       </p>
-                      {c.existingId ? (
-                        <span className="pill border-ink-3">Saved</span>
-                      ) : (
-                        <span className="pill border-ink-3 text-fg-3">Empty</span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {c.existingId ? (
+                          <a
+                            href={`/admin/matches/${c.existingId}`}
+                            className="text-[11px] font-semibold text-masters"
+                          >
+                            Adjust →
+                          </a>
+                        ) : null}
+                        {c.existingId ? (
+                          <span className="pill border-ink-3">Saved</span>
+                        ) : (
+                          <span className="pill border-ink-3 text-fg-3">Empty</span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
@@ -412,38 +425,33 @@ export default function AdminRoundMatchesPage() {
                       {renderSide(i, teamB, 'B')}
                     </div>
 
-                    <div className="grid grid-cols-3 gap-3 mt-4">
-                      <div className="col-span-3 sm:col-span-1">
-                        <label className="label">Result</label>
-                        <input
-                          type="text"
-                          placeholder="2&1, AS, 3UP"
-                          value={c.result}
-                          onChange={(e) => setCellField(i, { result: e.target.value })}
-                          className="input py-2"
-                        />
+                    {c.existingId ? (
+                      <div className="mt-4 flex items-center justify-between gap-3 p-3 rounded-xl bg-ink-2 border border-ink-3">
+                        <div className="min-w-0">
+                          <p className="text-[10px] uppercase tracking-wider text-fg-3">
+                            Current result
+                          </p>
+                          <p className="text-sm font-mono text-fg-1 truncate">
+                            {c.result || '—'}
+                            {c.pointsA != null && c.pointsB != null ? (
+                              <span className="ml-2 text-fg-2">
+                                {c.pointsA} – {c.pointsB}
+                              </span>
+                            ) : null}
+                          </p>
+                        </div>
+                        <a
+                          href={`/admin/matches/${c.existingId}`}
+                          className="btn-ghost text-xs py-2 whitespace-nowrap"
+                        >
+                          Adjust →
+                        </a>
                       </div>
-                      <div>
-                        <label className="label">Pts A</label>
-                        <input
-                          type="number"
-                          step="0.5"
-                          value={c.pointsA}
-                          onChange={(e) => setCellField(i, { pointsA: e.target.value })}
-                          className="input py-2"
-                        />
-                      </div>
-                      <div>
-                        <label className="label">Pts B</label>
-                        <input
-                          type="number"
-                          step="0.5"
-                          value={c.pointsB}
-                          onChange={(e) => setCellField(i, { pointsB: e.target.value })}
-                          className="input py-2"
-                        />
-                      </div>
-                    </div>
+                    ) : (
+                      <p className="mt-4 text-[11px] text-fg-3">
+                        Save the roster first, then use <em>Adjust</em> to set results, overrides, or absent players.
+                      </p>
+                    )}
 
                     <div className="grid grid-cols-2 gap-2 mt-4">
                       <button
