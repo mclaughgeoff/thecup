@@ -25,7 +25,7 @@ export default function BottomSheet({ open, onClose, title, children }: BottomSh
     <div className="fixed inset-0 z-50">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 animate-fade-in"
+        className="absolute inset-0 bg-black/40 animate-fade-in"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -35,7 +35,7 @@ export default function BottomSheet({ open, onClose, title, children }: BottomSh
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="glass absolute bottom-0 left-0 right-0 rounded-t-3xl pb-safe animate-slide-up"
+        className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl pb-safe shadow-elev animate-slide-up"
       >
         <div className="flex justify-center pt-3">
           <div className="w-10 h-1 rounded-full bg-ink-3" aria-hidden="true" />
