@@ -21,7 +21,7 @@ export default function PlayerAvatar({ name, photoUrl, size = 'md', ring = true 
   return (
     <div
       className={clsx(
-        'rounded-full flex items-center justify-center font-bold text-fg-1 bg-masters flex-shrink-0 overflow-hidden',
+        'rounded-full flex items-center justify-center font-bold bg-ink-2 text-masters flex-shrink-0 overflow-hidden',
         ring && 'ring-1 ring-ink-3',
         sizeClasses[size],
       )}

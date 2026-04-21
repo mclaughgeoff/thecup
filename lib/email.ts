@@ -31,7 +31,7 @@ export async function sendMagicLinkEmail(
   const htmlContent = `
     <h2>Welcome to The Cup, ${playerName}!</h2>
     <p>Click the link below to sign in to your account:</p>
-    <p><a href="${loginUrl}" style="background-color: #1B4D3E; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Sign In</a></p>
+    <p><a href="${loginUrl}" style="background-color: #4F46E5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; display: inline-block; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-weight: 600;">Sign In</a></p>
     <p>Or copy this link: <code>${loginUrl}</code></p>
     <p>This link expires in 24 hours.</p>
   `;

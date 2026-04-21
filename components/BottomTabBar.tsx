@@ -101,15 +101,22 @@ export default function BottomTabBar({ isAdmin = false }: BottomTabBarProps) {
     <>
       <nav
         aria-label="Primary"
-        className="glass fixed bottom-0 left-0 right-0 z-30 pb-safe"
+        className="glass fixed bottom-0 left-0 right-0 z-30 pb-safe border-b-0 border-t border-ink-3"
       >
         <ul className="grid grid-cols-5">
           {tabs.map((tab) => {
             const active = tab.match ? tab.match(pathname ?? '') : false;
-            const color = active ? 'text-masters-glow' : 'text-fg-2';
+            const color = active ? 'text-masters' : 'text-fg-3';
             const content = (
               <div className="flex flex-col items-center gap-1">
-                <span className={color}>{tab.icon}</span>
+                <span
+                  className={clsx(
+                    'flex items-center justify-center rounded-xl px-3 py-1 transition',
+                    active ? 'bg-masters/10 text-masters' : 'text-fg-3',
+                  )}
+                >
+                  {tab.icon}
+                </span>
                 <span className={clsx('text-[10px] font-medium', color)}>{tab.label}</span>
               </div>
             );

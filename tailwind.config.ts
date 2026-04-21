@@ -5,34 +5,41 @@ const config: Config = {
     './app/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
   ],
-  darkMode: 'class',
   theme: {
     extend: {
       colors: {
+        // Surfaces (light)
         ink: {
-          0: '#0A0A0A',
-          1: '#141414',
-          2: '#1C1C1E',
-          3: '#2C2C2E',
+          0: '#FFFFFF', // app background
+          1: '#FAFAFA', // card surface
+          2: '#F5F5F7', // nested surface / input bg
+          3: '#E5E7EB', // borders, dividers
         },
+        // Text
         fg: {
-          1: '#FFFFFF',
-          2: '#A1A1A6',
-          3: '#636366',
+          1: '#0A0A0A', // primary text (warm near-black)
+          2: '#4B5563', // secondary
+          3: '#9CA3AF', // tertiary / captions
         },
+        // Brand — indigo replaces Masters green
         masters: {
-          DEFAULT: '#2D6A4F',
-          light: '#40916C',
-          glow: '#52B788',
+          DEFAULT: '#4F46E5', // indigo-600
+          light:   '#6366F1', // indigo-500 (hover)
+          glow:    '#4338CA', // indigo-700 (strong emphasis)
         },
+        // Gold token kept but collapsed to indigo to avoid sweeping 20+ files.
+        // If a trophy/leaderboard needs a warm accent later, introduce `amber`.
         gold: {
-          DEFAULT: '#D4A843',
-          muted: '#B8943F',
+          DEFAULT: '#4F46E5',
+          muted:   '#6366F1',
         },
+        // Team colors — brand identities for the two Ryder Cup sides, unchanged
         teamA: '#C41E3A',
         teamB: '#003DA5',
-        danger: '#FF453A',
-        success: '#30D158',
+        // Semantic
+        danger:  '#EF4444',
+        success: '#10B981',
+        warning: '#F59E0B',
       },
       fontFamily: {
         sans: ['var(--font-inter)', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
@@ -40,6 +47,11 @@ const config: Config = {
       borderRadius: {
         '2xl': '1rem',
         '3xl': '1.5rem',
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06)',
+        elev: '0 4px 12px rgba(16,24,40,0.06), 0 2px 4px rgba(16,24,40,0.04)',
+        hero: '0 12px 32px rgba(79,70,229,0.10), 0 4px 8px rgba(16,24,40,0.04)',
       },
       keyframes: {
         shimmer: {

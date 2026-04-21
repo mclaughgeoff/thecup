@@ -73,12 +73,12 @@ export default async function DashboardPage() {
       <>
         <AppHeader title="The Cup" />
         <main className="bg-ink-0 pb-nav">
-          <section className="px-4 pt-6 pb-4">
-            <div className="flex items-center gap-3">
+          <section className="px-4 pt-8 pb-6">
+            <div className="flex items-center gap-4">
               <PlayerAvatar name={player.name} photoUrl={player.photoUrl} size="lg" />
               <div>
-                <p className="text-xs uppercase tracking-wider text-fg-3">Welcome back</p>
-                <h1 className="text-2xl font-semibold">{firstName}</h1>
+                <p className="text-[11px] uppercase tracking-[0.15em] text-fg-3">Welcome back</p>
+                <h1 className="text-3xl md:text-4xl font-bold tracking-tight mt-0.5">{firstName}</h1>
               </div>
             </div>
           </section>
@@ -88,18 +88,18 @@ export default async function DashboardPage() {
               <SectionCard tone="gold" className="relative overflow-hidden">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-widest text-gold">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-masters">
                       Next round
                     </p>
-                    <p className="text-xl font-semibold mt-1">{nextRound.course}</p>
-                    <p className="text-sm text-fg-2 mt-0.5">
+                    <p className="text-2xl font-bold tracking-tight mt-1.5">{nextRound.course}</p>
+                    <p className="text-sm text-fg-2 mt-1">
                       {formatRoundDate(nextRound.date)} · {nextRound.teeTime}
                     </p>
                   </div>
                   <span
                     className={`pill ${
                       nextRound.isRyderCup
-                        ? 'border-masters/60 text-masters-glow'
+                        ? 'border-masters/40 bg-masters/10 text-masters'
                         : 'border-ink-3 text-fg-2'
                     }`}
                   >
@@ -110,7 +110,7 @@ export default async function DashboardPage() {
                   <span className="text-fg-2">{nextRound.format}</span>
                   <Link
                     href="/schedule"
-                    className="text-masters-glow font-semibold inline-flex items-center gap-1"
+                    className="text-masters font-semibold inline-flex items-center gap-1 hover:text-masters-glow transition"
                   >
                     View schedule
                     <ArrowRightIcon size={14} />
@@ -127,9 +127,9 @@ export default async function DashboardPage() {
                 <Link
                   key={href}
                   href={href}
-                  className="card hover:border-fg-3 transition tap-highlight-none"
+                  className="card hover:shadow-elev hover:-translate-y-0.5 tap-highlight-none"
                 >
-                  <div className="w-9 h-9 rounded-lg bg-ink-2 border border-ink-3 flex items-center justify-center text-fg-2 mb-3">
+                  <div className="w-9 h-9 rounded-lg bg-ink-2 flex items-center justify-center text-fg-2 mb-3">
                     <Icon size={18} />
                   </div>
                   <p className="font-semibold">{label}</p>
@@ -139,12 +139,12 @@ export default async function DashboardPage() {
               {player.isAdmin ? (
                 <Link
                   href="/admin"
-                  className="card border-gold/40 hover:border-gold transition tap-highlight-none"
+                  className="card border-masters/30 hover:border-masters hover:shadow-elev hover:-translate-y-0.5 tap-highlight-none"
                 >
-                  <div className="w-9 h-9 rounded-lg bg-gold/10 border border-gold/30 flex items-center justify-center text-gold mb-3">
+                  <div className="w-9 h-9 rounded-lg bg-masters/10 flex items-center justify-center text-masters mb-3">
                     <SettingsIcon size={18} />
                   </div>
-                  <p className="font-semibold text-gold">Admin</p>
+                  <p className="font-semibold text-masters">Admin</p>
                   <p className="text-xs text-fg-3 mt-0.5">Manage the trip</p>
                 </Link>
               ) : null}
