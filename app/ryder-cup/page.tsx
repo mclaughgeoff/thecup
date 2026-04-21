@@ -68,7 +68,7 @@ export default async function RyderCupPage() {
               <div className="text-center">
                 <div className="h-1.5 w-12 rounded-full mx-auto mb-3" style={{ backgroundColor: teamA?.color }} />
                 <p className="text-xs uppercase tracking-wider text-fg-2 font-semibold">{teamA?.name ?? 'Team A'}</p>
-                <p className="mt-2 text-6xl font-semibold font-mono tabular-nums">
+                <p className="mt-2 text-6xl md:text-7xl font-bold tracking-tighter tabular-nums">
                   {teamA ? teamA.points.toFixed(1) : '—'}
                 </p>
                 <p className="text-[10px] uppercase tracking-wider text-fg-3 mt-1">
@@ -81,7 +81,7 @@ export default async function RyderCupPage() {
               <div className="text-center">
                 <div className="h-1.5 w-12 rounded-full mx-auto mb-3" style={{ backgroundColor: teamB?.color }} />
                 <p className="text-xs uppercase tracking-wider text-fg-2 font-semibold">{teamB?.name ?? 'Team B'}</p>
-                <p className="mt-2 text-6xl font-semibold font-mono tabular-nums">
+                <p className="mt-2 text-6xl md:text-7xl font-bold tracking-tighter tabular-nums">
                   {teamB ? teamB.points.toFixed(1) : '—'}
                 </p>
                 <p className="text-[10px] uppercase tracking-wider text-fg-3 mt-1">
