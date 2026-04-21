@@ -13,12 +13,15 @@ export async function PUT(
     const body = await request.json();
 
     const data: Record<string, unknown> = {};
-    if (body.course !== undefined)       data.course = body.course;
-    if (body.teeTime !== undefined)      data.teeTime = body.teeTime;
-    if (body.format !== undefined)       data.format = body.format;
-    if (body.isRyderCup !== undefined)   data.isRyderCup = Boolean(body.isRyderCup);
-    if (body.activeTeeBox !== undefined) data.activeTeeBox = body.activeTeeBox || null;
-    if (body.courseId !== undefined)     data.courseId = body.courseId || null;
+    if (body.course !== undefined)            data.course = body.course;
+    if (body.teeTime !== undefined)           data.teeTime = body.teeTime;
+    if (body.format !== undefined)            data.format = body.format;
+    if (body.isRyderCup !== undefined)        data.isRyderCup = Boolean(body.isRyderCup);
+    if (body.activeTeeBox !== undefined)      data.activeTeeBox = body.activeTeeBox || null;
+    if (body.courseId !== undefined)          data.courseId = body.courseId || null;
+    if (body.formatId !== undefined)          data.formatId = body.formatId || null;
+    if (body.handicapAllowance !== undefined) data.handicapAllowance = body.handicapAllowance === null || body.handicapAllowance === '' ? null : Number(body.handicapAllowance);
+    if (body.scoringType !== undefined)       data.scoringType = body.scoringType || null;
 
     const round = await prisma.round.update({
       where: { id: params.id },
