@@ -40,6 +40,9 @@ model Player {
   // Availability
   roundAvailability RoundAvailability[]
 
+  // Per-round handicap overrides (admin sets a specific playing handicap for this round)
+  roundHandicapOverrides RoundPlayerHandicap[]
+
   // Ryder Cup tournament team (at most one per player)
   ryderCupTeam      RyderCupTeamMember?
 
@@ -88,11 +91,30 @@ model Round {
 
   matches         Match[]
   availabilities  RoundAvailability[]
+  handicapOverrides RoundPlayerHandicap[]
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@unique([roundNumber])
+}
+
+/// Admin override: a specific playing handicap for a single player in a single round.
+/// When set, bypasses the normal courseHandicap × allowance computation for that player.
+/// For team (per-side) formats, the team's combined PH is the sum of (possibly
+/// overridden) individual PHs, so this naturally applies to team play too.
+model RoundPlayerHandicap {
+  id              String @id @default(cuid())
+  roundId         String
+  round           Round  @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  playerId        String
+  player          Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playingHandicap Int
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([roundId, playerId])
+  @@index([roundId])
 }
 
 model RoundAvailability {

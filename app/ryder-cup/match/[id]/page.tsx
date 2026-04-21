@@ -33,6 +33,7 @@ export default async function RyderCupMatchPage({
       round: {
         include: {
           formatRef: true,
+          handicapOverrides: true,
           courseRef: {
             include: {
               teeBoxes: true,
@@ -77,6 +78,11 @@ export default async function RyderCupMatchPage({
       strokes: s.strokes,
     }));
 
+    const playerOverrides: Record<string, number> = {};
+    for (const o of match.round.handicapOverrides ?? []) {
+      playerOverrides[o.playerId] = o.playingHandicap;
+    }
+
     state = computeMatchState({
       format: resolved.format,
       allowance: resolved.allowance,
@@ -84,6 +90,7 @@ export default async function RyderCupMatchPage({
       holes,
       players,
       scores,
+      playerOverrides,
     });
   }
 

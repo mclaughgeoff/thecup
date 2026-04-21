@@ -45,6 +45,7 @@ export default async function RyderCupPage() {
       round: {
         include: {
           formatRef: true,
+          handicapOverrides: true,
           courseRef: {
             include: {
               teeBoxes: true,
@@ -79,8 +80,12 @@ export default async function RyderCupPage() {
     const scores: ScoreRow[] = m.scores.map((s) => ({
       hole: s.hole, side: s.side as Side, playerId: s.playerId, strokes: s.strokes,
     }));
+    const playerOverrides: Record<string, number> = {};
+    for (const o of m.round.handicapOverrides ?? []) {
+      playerOverrides[o.playerId] = o.playingHandicap;
+    }
     const state = computeMatchState({
-      format: resolved.format, allowance: resolved.allowance, slope, holes, players, scores,
+      format: resolved.format, allowance: resolved.allowance, slope, holes, players, scores, playerOverrides,
     });
     // Credit live points: once a match is final, the winning side earns; in-progress = 0.
     // (Skip "show running probability" — only award when resolved.)

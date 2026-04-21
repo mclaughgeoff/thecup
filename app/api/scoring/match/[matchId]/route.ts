@@ -33,6 +33,7 @@ export async function GET(
         round: {
           include: {
             formatRef: true,
+            handicapOverrides: true,
             courseRef: {
               include: {
                 teeBoxes: true,
@@ -80,7 +81,13 @@ export async function GET(
       strokes: s.strokes,
     }));
 
+    const playerOverrides: Record<string, number> = {};
+    for (const o of match.round.handicapOverrides ?? []) {
+      playerOverrides[o.playerId] = o.playingHandicap;
+    }
+
     const state = computeMatchState({
+      playerOverrides,
       format: resolved.format,
       allowance: resolved.allowance,
       slope,

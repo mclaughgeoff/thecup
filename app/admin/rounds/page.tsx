@@ -316,13 +316,21 @@ export default function AdminRoundsPage() {
                   </label>
                 </div>
 
-                <button
-                  onClick={() => save(round.id)}
-                  disabled={d.saving}
-                  className="btn-primary w-full mt-4 text-sm py-2.5"
-                >
-                  {d.saving ? 'Saving…' : 'Save'}
-                </button>
+                <div className="grid grid-cols-2 gap-2 mt-4">
+                  <a
+                    href={`/admin/rounds/${round.id}/handicaps`}
+                    className="btn-ghost text-xs py-2.5"
+                  >
+                    Handicap overrides →
+                  </a>
+                  <button
+                    onClick={() => save(round.id)}
+                    disabled={d.saving}
+                    className="btn-primary text-sm py-2.5"
+                  >
+                    {d.saving ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
               </section>
             );
           })}

@@ -57,6 +57,13 @@ export interface ComputeInput {
   holes: HoleInfo[];           // 18 entries (or fewer if partial course)
   players: PlayerInfo[];
   scores: ScoreRow[];
+  /**
+   * Admin-set playing-handicap overrides for this round, keyed by playerId.
+   * When present, completely replaces the computed PH for that player.
+   * Team handicap (for per-side formats) is recomputed as the sum of each
+   * partner's effective PH, so overrides compose naturally with team play.
+   */
+  playerOverrides?: Record<string, number>;
 }
 
 export interface PerPlayer {
@@ -253,9 +260,12 @@ export function computeMatchState(input: ComputeInput): MatchState {
   const orderedHoles = [...holes].sort((a, b) => a.holeNumber - b.holeNumber);
 
   // Per-player handicap + strokes allocation
+  const overrides = input.playerOverrides ?? {};
   const perPlayer: PerPlayer[] = players.map((p) => {
     const ch = courseHandicap(p.handicap, slope);
-    const ph = playingHandicap(ch, allowance);
+    const computedPH = playingHandicap(ch, allowance);
+    // Admin override (if set) wins — replaces the computed PH outright.
+    const ph = overrides[p.playerId] ?? computedPH;
     const strokesByHole: Record<number, number> = {};
     for (const h of orderedHoles) {
       strokesByHole[h.holeNumber] = strokesOnHole(ph, h.handicapIndex);
