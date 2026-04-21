@@ -131,6 +131,7 @@ export default async function SchedulePage() {
                             <MatchupCard
                               key={match.id}
                               matchNumber={match.matchNumber}
+                              teeTime={teeTime}
                               strokeEntryMode={round.formatRef?.strokeEntryMode}
                               teamA={{ name: match.teamA.name, color: match.teamA.color }}
                               teamB={{ name: match.teamB.name, color: match.teamB.color }}
