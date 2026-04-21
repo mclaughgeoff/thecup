@@ -10,8 +10,8 @@
 
 html {
   scroll-behavior: smooth;
-  color-scheme: dark;
-  background-color: #0A0A0A;
+  color-scheme: light;
+  background-color: #FFFFFF;
 }
 
 body {
@@ -24,22 +24,23 @@ body {
 
 @layer components {
   .card {
-    @apply bg-ink-1 border border-ink-3 rounded-2xl p-4;
+    @apply bg-white border border-ink-3 rounded-2xl p-4 shadow-card transition-all duration-200 ease-out;
   }
 
   .card-elevated {
-    @apply bg-ink-2 border border-ink-3 rounded-2xl p-4;
+    @apply bg-white rounded-2xl p-4 shadow-elev transition-all duration-200 ease-out;
   }
 
+  /* Sticky header pane — light frost */
   .glass {
-    @apply border border-ink-3;
-    background-color: rgba(28, 28, 30, 0.82);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    background-color: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    @apply border-b border-ink-3;
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 bg-masters text-fg-1 font-semibold px-4 py-3 rounded-xl hover:bg-masters-light active:scale-[0.98] transition disabled:opacity-50 disabled:pointer-events-none;
+    @apply inline-flex items-center justify-center gap-2 bg-masters text-white font-semibold px-4 py-3 rounded-xl hover:bg-masters-light active:scale-[0.98] transition disabled:opacity-50 disabled:pointer-events-none shadow-card;
   }
 
   .btn-ghost {
@@ -47,11 +48,11 @@ body {
   }
 
   .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 border border-masters text-masters-glow font-semibold px-4 py-3 rounded-xl hover:bg-masters/10 active:scale-[0.98] transition;
+    @apply inline-flex items-center justify-center gap-2 border border-masters text-masters font-semibold px-4 py-3 rounded-xl hover:bg-masters/10 active:scale-[0.98] transition;
   }
 
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 bg-danger/15 text-danger font-semibold px-4 py-3 rounded-xl border border-danger/30 hover:bg-danger/25 active:scale-[0.98] transition;
+    @apply inline-flex items-center justify-center gap-2 bg-danger/10 text-danger font-semibold px-4 py-3 rounded-xl border border-danger/25 hover:bg-danger/15 active:scale-[0.98] transition;
   }
 
   .pill {
@@ -59,7 +60,7 @@ body {
   }
 
   .input {
-    @apply w-full bg-ink-1 border border-ink-3 text-fg-1 placeholder:text-fg-3 rounded-xl px-3 py-3 focus:outline-none focus:border-masters focus:ring-2 focus:ring-masters/25 transition;
+    @apply w-full bg-white border border-ink-3 text-fg-1 placeholder:text-fg-3 rounded-xl px-3 py-3 focus:outline-none focus:border-masters focus:ring-2 focus:ring-masters/20 transition;
   }
 
   .label {
@@ -86,7 +87,7 @@ body {
     display: none;
   }
   .skeleton {
-    background: linear-gradient(90deg, #1C1C1E 25%, #2C2C2E 50%, #1C1C1E 75%);
+    background: linear-gradient(90deg, #F5F5F7 25%, #E5E7EB 50%, #F5F5F7 75%);
     background-size: 200% 100%;
     @apply animate-shimmer rounded;
   }
@@ -95,14 +96,14 @@ body {
   }
 }
 
-/* Autofill fixes for dark inputs on Safari/Chrome */
+/* Autofill fixes for light inputs on Safari/Chrome */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
 textarea:-webkit-autofill,
 select:-webkit-autofill {
-  -webkit-text-fill-color: #FFFFFF;
-  -webkit-box-shadow: 0 0 0 1000px #141414 inset;
-  caret-color: #FFFFFF;
+  -webkit-text-fill-color: #0A0A0A;
+  -webkit-box-shadow: 0 0 0 1000px #FFFFFF inset;
+  caret-color: #0A0A0A;
   transition: background-color 9999s ease-out 0s;
 }
