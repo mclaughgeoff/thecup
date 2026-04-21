@@ -96,7 +96,7 @@ export default function MatchupCard({
             <div key={i} className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
               <div>{sideA[i] ? <PlayerTile player={sideA[i]} /> : <p className="text-xs text-fg-3 italic">—</p>}</div>
               <span className="text-fg-3 text-xs">vs</span>
-              <div>
+              <div className="flex justify-end">
                 {sideB[i] ? <PlayerTile player={sideB[i]} /> : <p className="text-xs text-fg-3 italic">—</p>}
               </div>
             </div>
@@ -115,9 +115,13 @@ export default function MatchupCard({
           <span className="text-fg-3 text-xs">vs</span>
           <div className="space-y-1.5">
             {sideB.length === 0 ? (
-              <p className="text-xs text-fg-3 italic">—</p>
+              <p className="text-xs text-fg-3 italic text-right">—</p>
             ) : (
-              sideB.map((p) => <PlayerTile key={p.playerId} player={p} />)
+              sideB.map((p) => (
+                <div key={p.playerId} className="flex justify-end">
+                  <PlayerTile player={p} />
+                </div>
+              ))
             )}
           </div>
         </div>
