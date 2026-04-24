@@ -87,6 +87,12 @@ export interface MatchStateResp {
   };
 }
 
+interface ViewerInfo {
+  playerId: string;
+  side: 'A' | 'B' | null;
+  isAdmin: boolean;
+}
+
 interface Props {
   matchId: string;
   data: MatchStateResp;
@@ -95,9 +101,10 @@ interface Props {
   setHole: (h: number) => void;
   /** Switch to the Card view from outside this component. */
   onOpenCard: () => void;
+  viewer: ViewerInfo;
 }
 
-export default function HoleScoring({ matchId, data, reload, currentHole, setHole, onOpenCard }: Props) {
+export default function HoleScoring({ matchId, data, reload, currentHole, setHole, onOpenCard, viewer }: Props) {
   const hole = useMemo(() => data.holes.find((h) => h.holeNumber === currentHole) ?? null, [data, currentHole]);
   const perHole = useMemo(() => data.state.perHole.find((h) => h.hole === currentHole) ?? null, [data, currentHole]);
   const isPerSide = data.format.strokeEntryMode === 'per_side';
@@ -175,7 +182,18 @@ export default function HoleScoring({ matchId, data, reload, currentHole, setHol
         </p>
       </div>
 
-      {/* Entry */}
+      {/* Entry — non-admin viewers can only edit their own team's side. */}
+      {viewer.side === null && !viewer.isAdmin ? (
+        <div className="card text-center text-sm text-fg-2">
+          You're not playing in this match — scores are view-only.
+        </div>
+      ) : null}
+      {viewer.isAdmin && viewer.side === null ? (
+        <div className="pill border-gold/40 text-gold bg-gold/5 mx-auto block w-fit">
+          Admin — entering for both teams
+        </div>
+      ) : null}
+
       {isPerSide ? (
         <div className="grid grid-cols-2 gap-3">
           <TeamStepper
@@ -184,6 +202,7 @@ export default function HoleScoring({ matchId, data, reload, currentHole, setHol
             strokes={data.state.teamStrokesByHole.A[currentHole] ?? 0}
             gross={perHole?.grossA ?? null}
             onSave={(strokes) => saveTeam(matchId, currentHole, 'A', strokes, reload)}
+            readOnly={!viewer.isAdmin && viewer.side !== 'A'}
           />
           <TeamStepper
             label={teamB.name}
@@ -191,6 +210,7 @@ export default function HoleScoring({ matchId, data, reload, currentHole, setHol
             strokes={data.state.teamStrokesByHole.B[currentHole] ?? 0}
             gross={perHole?.grossB ?? null}
             onSave={(strokes) => saveTeam(matchId, currentHole, 'B', strokes, reload)}
+            readOnly={!viewer.isAdmin && viewer.side !== 'B'}
           />
         </div>
       ) : (
@@ -203,6 +223,7 @@ export default function HoleScoring({ matchId, data, reload, currentHole, setHol
             hole={currentHole}
             matchId={matchId}
             reload={reload}
+            readOnly={!viewer.isAdmin && viewer.side !== 'A'}
           />
           <SideBlock
             label={teamB.name}
@@ -212,6 +233,7 @@ export default function HoleScoring({ matchId, data, reload, currentHole, setHol
             hole={currentHole}
             matchId={matchId}
             reload={reload}
+            readOnly={!viewer.isAdmin && viewer.side !== 'B'}
           />
         </div>
       )}
@@ -298,12 +320,14 @@ function TeamStepper({
   strokes,
   gross,
   onSave,
+  readOnly = false,
 }: {
   label: string;
   color: string;
   strokes: number;
   gross: number | null;
   onSave: (strokes: number | null) => Promise<void>;
+  readOnly?: boolean;
 }) {
   const [val, setVal] = useState<number | null>(gross);
   const [pending, setPending] = useState(false);
@@ -322,6 +346,7 @@ function TeamStepper({
   }, [onSave]);
 
   const bump = (delta: number) => {
+    if (readOnly) return;
     const base = val ?? 4;
     const next = Math.max(1, Math.min(15, base + delta));
     setVal(next);
@@ -329,34 +354,42 @@ function TeamStepper({
   };
 
   return (
-    <div className="bg-ink-1 border border-ink-3 rounded-2xl p-3 shadow-card">
+    <div className={`bg-ink-1 border border-ink-3 rounded-2xl p-3 shadow-card ${readOnly ? 'opacity-70' : ''}`}>
       <div className="flex items-center gap-2 mb-3">
         <span className="h-1 w-6 rounded-full" style={{ backgroundColor: color }} />
         <p className="text-[10px] uppercase tracking-wider font-semibold" style={{ color }}>
           {label}
         </p>
       </div>
-      <div className="flex items-center justify-between">
-        <button
-          aria-label="Decrease"
-          onClick={() => bump(-1)}
-          disabled={pending}
-          className="w-14 h-14 rounded-full bg-ink-2 active:scale-95 flex items-center justify-center text-2xl font-semibold text-fg-1 disabled:opacity-50 transition tap-highlight-none"
-        >
-          −
-        </button>
-        <span className="text-4xl font-bold font-mono tabular-nums text-fg-1">
-          {val ?? '—'}
-        </span>
-        <button
-          aria-label="Increase"
-          onClick={() => bump(1)}
-          disabled={pending}
-          className="w-14 h-14 rounded-full bg-ink-2 active:scale-95 flex items-center justify-center text-2xl font-semibold text-fg-1 disabled:opacity-50 transition tap-highlight-none"
-        >
-          +
-        </button>
-      </div>
+      {readOnly ? (
+        <div className="flex items-center justify-center py-3">
+          <span className="text-4xl font-bold font-mono tabular-nums text-fg-1">
+            {val ?? '—'}
+          </span>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between">
+          <button
+            aria-label="Decrease"
+            onClick={() => bump(-1)}
+            disabled={pending}
+            className="w-14 h-14 rounded-full bg-ink-2 active:scale-95 flex items-center justify-center text-2xl font-semibold text-fg-1 disabled:opacity-50 transition tap-highlight-none"
+          >
+            −
+          </button>
+          <span className="text-4xl font-bold font-mono tabular-nums text-fg-1">
+            {val ?? '—'}
+          </span>
+          <button
+            aria-label="Increase"
+            onClick={() => bump(1)}
+            disabled={pending}
+            className="w-14 h-14 rounded-full bg-ink-2 active:scale-95 flex items-center justify-center text-2xl font-semibold text-fg-1 disabled:opacity-50 transition tap-highlight-none"
+          >
+            +
+          </button>
+        </div>
+      )}
       {strokes > 0 ? (
         <div className="mt-2 flex justify-center">
           <span className="text-[10px] font-semibold bg-masters/10 text-masters px-2 py-0.5 rounded-full">
@@ -376,6 +409,7 @@ function SideBlock({
   hole,
   matchId,
   reload,
+  readOnly = false,
 }: {
   label: string;
   color: string;
@@ -384,9 +418,10 @@ function SideBlock({
   hole: number;
   matchId: string;
   reload: () => Promise<void>;
+  readOnly?: boolean;
 }) {
   return (
-    <div className="bg-ink-1 border border-ink-3 rounded-2xl p-3 shadow-card">
+    <div className={`bg-ink-1 border border-ink-3 rounded-2xl p-3 shadow-card ${readOnly ? 'opacity-70' : ''}`}>
       <div className="flex items-center gap-2 mb-3">
         <span className="h-1 w-6 rounded-full" style={{ backgroundColor: color }} />
         <p className="text-[10px] uppercase tracking-wider font-semibold" style={{ color }}>
@@ -415,7 +450,7 @@ function SideBlock({
             );
           }
           return (
-            <PlayerStepper key={p.playerId} player={p} hole={hole} matchId={matchId} reload={reload} />
+            <PlayerStepper key={p.playerId} player={p} hole={hole} matchId={matchId} reload={reload} readOnly={readOnly} />
           );
         })}
       </div>
@@ -428,11 +463,13 @@ function PlayerStepper({
   hole,
   matchId,
   reload,
+  readOnly = false,
 }: {
   player: PerPlayer;
   hole: number;
   matchId: string;
   reload: () => Promise<void>;
+  readOnly?: boolean;
 }) {
   const [val, setVal] = useState<number | null>(null);
   const [pending, setPending] = useState(false);
@@ -461,6 +498,7 @@ function PlayerStepper({
   };
 
   const bump = (delta: number) => {
+    if (readOnly) return;
     const base = val ?? 4;
     const next = Math.max(1, Math.min(15, base + delta));
     setVal(next);
@@ -479,25 +517,33 @@ function PlayerStepper({
           <p className="text-[10px] text-fg-3">PH {player.playingHandicap}</p>
         )}
       </div>
-      <button
-        onClick={() => bump(-1)}
-        disabled={pending}
-        aria-label={`Decrease ${player.name}`}
-        className="w-10 h-10 rounded-full bg-ink-2 active:scale-95 flex items-center justify-center text-xl font-semibold disabled:opacity-50 transition tap-highlight-none"
-      >
-        −
-      </button>
-      <span className="w-10 text-center text-2xl font-bold font-mono tabular-nums">
-        {val ?? '—'}
-      </span>
-      <button
-        onClick={() => bump(1)}
-        disabled={pending}
-        aria-label={`Increase ${player.name}`}
-        className="w-10 h-10 rounded-full bg-ink-2 active:scale-95 flex items-center justify-center text-xl font-semibold disabled:opacity-50 transition tap-highlight-none"
-      >
-        +
-      </button>
+      {readOnly ? (
+        <span className="w-10 text-center text-2xl font-bold font-mono tabular-nums">
+          {val ?? '—'}
+        </span>
+      ) : (
+        <>
+          <button
+            onClick={() => bump(-1)}
+            disabled={pending}
+            aria-label={`Decrease ${player.name}`}
+            className="w-10 h-10 rounded-full bg-ink-2 active:scale-95 flex items-center justify-center text-xl font-semibold disabled:opacity-50 transition tap-highlight-none"
+          >
+            −
+          </button>
+          <span className="w-10 text-center text-2xl font-bold font-mono tabular-nums">
+            {val ?? '—'}
+          </span>
+          <button
+            onClick={() => bump(1)}
+            disabled={pending}
+            aria-label={`Increase ${player.name}`}
+            className="w-10 h-10 rounded-full bg-ink-2 active:scale-95 flex items-center justify-center text-xl font-semibold disabled:opacity-50 transition tap-highlight-none"
+          >
+            +
+          </button>
+        </>
+      )}
     </div>
   );
 }

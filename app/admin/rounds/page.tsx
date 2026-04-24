@@ -342,12 +342,18 @@ export default function AdminRoundsPage() {
                   </label>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 mt-4">
+                <div className="grid grid-cols-3 gap-2 mt-4">
+                  <a
+                    href={`/admin/ryder-cup/rounds/${round.id}`}
+                    className="btn-ghost text-xs py-2.5"
+                  >
+                    {d.isRyderCup ? 'Matches' : 'Groups'} →
+                  </a>
                   <a
                     href={`/admin/rounds/${round.id}/handicaps`}
                     className="btn-ghost text-xs py-2.5"
                   >
-                    Handicap overrides →
+                    Handicaps →
                   </a>
                   <button
                     onClick={() => save(round.id)}

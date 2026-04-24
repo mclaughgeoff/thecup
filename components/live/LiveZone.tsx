@@ -10,12 +10,20 @@ import LiveRyderCup from './LiveRyderCup';
 type Panel = 'scoring' | 'cup';
 type View = 'hole' | 'card';
 
+export interface LiveViewer {
+  playerId: string;
+  /** Which side the current user is playing on in this match, or null if not in it. */
+  side: 'A' | 'B' | null;
+  isAdmin: boolean;
+}
+
 interface Props {
   matchId: string;
   initialData: MatchStateResp;
+  viewer: LiveViewer;
 }
 
-export default function LiveZone({ matchId, initialData }: Props) {
+export default function LiveZone({ matchId, initialData, viewer }: Props) {
   const router = useRouter();
   const params = useSearchParams();
   // Seed state from URL on first render, but drive rendering from local state.
@@ -95,6 +103,7 @@ export default function LiveZone({ matchId, initialData }: Props) {
             currentHole={currentHole}
             setHole={setHole}
             onOpenCard={() => setView('card')}
+            viewer={viewer}
           />
         )
       ) : (

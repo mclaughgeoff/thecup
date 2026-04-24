@@ -50,3 +50,12 @@ export function getInitials(name: string): string {
     .join('')
     .toUpperCase();
 }
+
+/** Ryder-Cup-style point formatter: halves as "½", zero as "0", whole numbers otherwise. */
+export function fmtPts(n: number): string {
+  if (n === 0) return '0';
+  const whole = Math.floor(n);
+  const frac = n - whole;
+  if (frac === 0.5) return whole === 0 ? '½' : `${whole}½`;
+  return String(n);
+}

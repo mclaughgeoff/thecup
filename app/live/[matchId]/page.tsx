@@ -19,37 +19,50 @@ export default async function LiveMatchPage({
 }: {
   params: { matchId: string };
 }) {
-  await requireAuth();
+  const session = await requireAuth();
 
-  const match = await prisma.match.findUnique({
-    where: { id: params.matchId },
-    include: {
-      teamA: true,
-      teamB: true,
-      scores: true,
-      players: { include: { player: true } },
-      round: {
-        include: {
-          formatRef: true,
-          handicapOverrides: true,
-          courseRef: {
-            include: {
-              teeBoxes: true,
-              holes: { orderBy: { holeNumber: 'asc' } },
+  const [match, viewer] = await Promise.all([
+    prisma.match.findUnique({
+      where: { id: params.matchId },
+      include: {
+        teamA: true,
+        teamB: true,
+        scores: true,
+        formatOverride: true,
+        players: { include: { player: true } },
+        round: {
+          include: {
+            formatRef: true,
+            handicapOverrides: true,
+            courseRef: {
+              include: {
+                teeBoxes: true,
+                holes: { orderBy: { holeNumber: 'asc' } },
+              },
             },
           },
         },
       },
-    },
-  });
+    }),
+    prisma.player.findUnique({ where: { id: session.playerId } }),
+  ]);
 
   if (!match) notFound();
 
-  const resolved = resolveRoundFormat(match.round);
+  // Prefer the match-level format override when an admin has set one.
+  const effectiveFormatRef = match.formatOverride ?? match.round.formatRef;
+  const resolved = resolveRoundFormat({
+    handicapAllowance: match.round.handicapAllowance,
+    scoringType: match.round.scoringType,
+    formatRef: effectiveFormatRef,
+  });
   if (!resolved) {
     // No scoring format — live zone isn't useful yet. Bounce back to the classic match page.
     redirect(`/ryder-cup/match/${match.id}`);
   }
+
+  const viewerMatchPlayer = match.players.find((p) => p.playerId === session.playerId);
+  const viewerSide: 'A' | 'B' | null = (viewerMatchPlayer?.side as 'A' | 'B' | undefined) ?? null;
 
   const holes: HoleInfo[] = (match.round.courseRef?.holes ?? []).map((h) => ({
     holeNumber: h.holeNumber,
@@ -101,8 +114,8 @@ export default async function LiveMatchPage({
       course_name: match.round.courseRef?.name ?? match.round.course,
     },
     format: {
-      name: match.round.formatRef?.name ?? match.round.format,
-      slug: match.round.formatRef?.slug ?? null,
+      name: effectiveFormatRef?.name ?? match.round.format,
+      slug: effectiveFormatRef?.slug ?? null,
       scoringType: resolved.format.scoringType,
       teamScoringMode: resolved.format.teamScoringMode,
       strokeEntryMode: resolved.format.strokeEntryMode,
@@ -132,5 +145,15 @@ export default async function LiveMatchPage({
     },
   };
 
-  return <LiveZone matchId={match.id} initialData={initialData} />;
+  return (
+    <LiveZone
+      matchId={match.id}
+      initialData={initialData}
+      viewer={{
+        playerId: session.playerId,
+        side: viewerSide,
+        isAdmin: viewer?.isAdmin ?? false,
+      }}
+    />
+  );
 }

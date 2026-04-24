@@ -25,7 +25,7 @@ export async function POST(
   { params }: { params: { matchId: string; hole: string } }
 ) {
   try {
-    await requireAuth();
+    const session = await requireAuth();
 
     const hole = parseInt(params.hole, 10);
     if (Number.isNaN(hole) || hole < 1 || hole > 18) {
@@ -48,11 +48,24 @@ export async function POST(
     const playerId = body.playerId ?? null;
 
     // Verify the match exists and, if playerId given, they're actually on that side.
-    const match = await prisma.match.findUnique({
-      where: { id: params.matchId },
-      include: { players: true },
-    });
+    const [match, viewer] = await Promise.all([
+      prisma.match.findUnique({
+        where: { id: params.matchId },
+        include: { players: true },
+      }),
+      prisma.player.findUnique({ where: { id: session.playerId } }),
+    ]);
     if (!match) return NextResponse.json({ error: 'Match not found' }, { status: 404 });
+
+    // Only admins — or players on the same side — can enter a score.
+    const viewerMp = match.players.find((p) => p.playerId === session.playerId);
+    const viewerSide = viewerMp?.side ?? null;
+    if (!viewer?.isAdmin && viewerSide !== body.side) {
+      return NextResponse.json(
+        { error: 'You can only enter scores for your own team' },
+        { status: 403 },
+      );
+    }
 
     if (playerId) {
       const mp = match.players.find(p => p.playerId === playerId);
@@ -109,12 +122,29 @@ export async function DELETE(
   { params }: { params: { matchId: string; hole: string } }
 ) {
   try {
-    await requireAuth();
+    const session = await requireAuth();
     const hole = parseInt(params.hole, 10);
     const body = await request.json().catch(() => ({})) as {
       side?: 'A' | 'B';
       playerId?: string | null;
     };
+
+    const [match, viewer] = await Promise.all([
+      prisma.match.findUnique({
+        where: { id: params.matchId },
+        include: { players: true },
+      }),
+      prisma.player.findUnique({ where: { id: session.playerId } }),
+    ]);
+    if (!match) return NextResponse.json({ error: 'Match not found' }, { status: 404 });
+
+    const viewerSide = match.players.find((p) => p.playerId === session.playerId)?.side ?? null;
+    if (!viewer?.isAdmin && body.side && viewerSide !== body.side) {
+      return NextResponse.json(
+        { error: 'You can only clear scores for your own team' },
+        { status: 403 },
+      );
+    }
 
     if (body.playerId) {
       await prisma.score.deleteMany({

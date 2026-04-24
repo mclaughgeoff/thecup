@@ -30,6 +30,7 @@ interface Match {
   result: string | null;
   pointsA: number | null;
   pointsB: number | null;
+  formatOverrideId: string | null;
   players: Array<{ id: string; playerId: string; side: 'A' | 'B'; player: PlayerLite }>;
 }
 
@@ -42,7 +43,14 @@ interface RoundInfo {
   teeSlots: string[];
   format: string;
   isRyderCup: boolean;
+  formatId: string | null;
   formatRef?: { teamSize: number; strokeEntryMode: string } | null;
+}
+
+interface FormatLite {
+  id: string;
+  name: string;
+  slug: string;
 }
 
 // A "cell" = the editor for one match slot (one match in the round).
@@ -54,6 +62,8 @@ interface CellDraft {
   existingId: string | null;
   sideA: string[];
   sideB: string[];
+  /** Admin format override for this match. Empty string = inherit round format. */
+  formatOverrideId: string;
   // Results + points are surfaced read-only here. Edits happen on the
   // Match adjustments page (admin/matches/[id]), which also handles the
   // override / ghost / absent-player logic. Keeping the display-only
@@ -69,6 +79,7 @@ const emptyCell = (matchNumber: number, teeSlotIndex: number): CellDraft => ({
   existingId: null,
   sideA: [],
   sideB: [],
+  formatOverrideId: '',
   result: null,
   pointsA: null,
   pointsB: null,
@@ -83,6 +94,7 @@ export default function AdminRoundMatchesPage() {
   const [loading, setLoading] = useState(true);
   const [round, setRound] = useState<RoundInfo | null>(null);
   const [teams, setTeams] = useState<RcTeam[]>([]);
+  const [formats, setFormats] = useState<FormatLite[]>([]);
   // existing matches are carried in each cell's `existingId`; no need for a separate matches list
   const [cells, setCells] = useState<CellDraft[]>([]);
   const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -97,10 +109,14 @@ export default function AdminRoundMatchesPage() {
       fetch('/api/admin/rc-teams'),
       fetch('/api/admin/availability'),
     ]);
-    const { rounds } = await rRes.json();
+    const { rounds, formats: fs } = (await rRes.json()) as {
+      rounds: RoundInfo[];
+      formats?: FormatLite[];
+    };
     const r = rounds.find((x: RoundInfo) => x.id === roundId);
     if (!r) return;
     setRound(r);
+    setFormats(fs ?? []);
 
     const ts = (await tRes.json()) as RcTeam[];
     setTeams(ts);
@@ -147,6 +163,7 @@ export default function AdminRoundMatchesPage() {
                 existingId: existing.id,
                 sideA: existing.players.filter((p) => p.side === 'A').map((p) => p.playerId),
                 sideB: existing.players.filter((p) => p.side === 'B').map((p) => p.playerId),
+                formatOverrideId: existing.formatOverrideId ?? '',
                 result: existing.result,
                 pointsA: existing.pointsA,
                 pointsB: existing.pointsB,
@@ -214,6 +231,7 @@ export default function AdminRoundMatchesPage() {
   const buildBody = (c: CellDraft) => ({
     matchNumber: c.matchNumber,
     teeSlotIndex: c.teeSlotIndex,
+    formatOverrideId: c.formatOverrideId || null,
     players: [
       ...c.sideA.map((playerId) => ({ playerId, side: 'A' as const })),
       ...c.sideB.map((playerId) => ({ playerId, side: 'B' as const })),
@@ -305,7 +323,7 @@ export default function AdminRoundMatchesPage() {
   if (loading || !round) {
     return (
       <>
-        <AppHeader title="Matches" backHref="/admin/ryder-cup" />
+        <AppHeader title="Loading…" backHref="/admin/rounds" />
         <main className="min-h-[50vh] flex items-center justify-center bg-ink-0">
           <div className="animate-spin rounded-full h-10 w-10 border-4 border-masters border-t-transparent" />
         </main>
@@ -313,6 +331,10 @@ export default function AdminRoundMatchesPage() {
       </>
     );
   }
+
+  const isCasual = !round.isRyderCup;
+  const unitLabel = isCasual ? 'Group' : 'Match';
+  const backHref = isCasual ? '/admin/rounds' : '/admin/ryder-cup';
 
   const teamSize = round.formatRef?.teamSize ?? 2;
   const cellsPerSlot = teamSize === 1 ? 2 : 1;
@@ -441,11 +463,15 @@ export default function AdminRoundMatchesPage() {
 
   return (
     <>
-      <AppHeader title={`Round ${round.roundNumber} matches`} backHref="/admin/ryder-cup" />
+      <AppHeader
+        title={`Round ${round.roundNumber} ${isCasual ? 'groups' : 'matches'}`}
+        backHref={backHref}
+      />
       <main className="bg-ink-0 pb-nav">
         <div className="px-4 pt-4 flex items-start justify-between gap-3">
           <p className="text-xs text-fg-3">
-            {round.dayOfWeek} · {round.course} · {round.format} · {round.teeTime}
+            {round.dayOfWeek} · {round.course}
+            {isCasual ? '' : ` · ${round.format}`} · {round.teeTime}
             {cellsPerSlot === 2 ? (
               <span className="text-masters-glow"> · 2 matches per tee time</span>
             ) : null}
@@ -486,10 +512,10 @@ export default function AdminRoundMatchesPage() {
                   <div key={c.matchNumber} className="card">
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-[10px] uppercase tracking-widest text-fg-3">
-                        Match {c.matchNumber}
+                        {unitLabel} {c.matchNumber}
                       </p>
                       <div className="flex items-center gap-2">
-                        {c.existingId ? (
+                        {c.existingId && !isCasual ? (
                           <a
                             href={`/admin/matches/${c.existingId}`}
                             className="text-[11px] font-semibold text-masters"
@@ -505,16 +531,39 @@ export default function AdminRoundMatchesPage() {
                       </div>
                     </div>
 
-                    {round.isRyderCup ? (
+                    {!isCasual ? (
+                      <div className="mb-3">
+                        <label className="label">
+                          Format
+                          <span className="text-[10px] text-fg-3 font-normal ml-2 normal-case tracking-normal">
+                            override · inherits round default
+                          </span>
+                        </label>
+                        <select
+                          value={c.formatOverrideId}
+                          onChange={(e) => setCellField(i, { formatOverrideId: e.target.value })}
+                          className="input"
+                        >
+                          <option value="">Inherit · {round.format}</option>
+                          {formats.map((f) => (
+                            <option key={f.id} value={f.id}>
+                              {f.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : null}
+
+                    {isCasual ? (
+                      renderCasualGroup(i)
+                    ) : (
                       <div className="grid grid-cols-2 gap-3">
                         {renderSide(i, teamA, 'A')}
                         {renderSide(i, teamB, 'B')}
                       </div>
-                    ) : (
-                      renderCasualGroup(i)
                     )}
 
-                    {c.existingId ? (
+                    {!isCasual && c.existingId ? (
                       <div className="mt-4 flex items-center justify-between gap-3 p-3 rounded-xl bg-ink-2 border border-ink-3">
                         <div className="min-w-0">
                           <p className="text-[10px] uppercase tracking-wider text-fg-3">
@@ -536,11 +585,11 @@ export default function AdminRoundMatchesPage() {
                           Adjust →
                         </a>
                       </div>
-                    ) : (
+                    ) : !isCasual ? (
                       <p className="mt-4 text-[11px] text-fg-3">
                         Save the roster first, then use <em>Adjust</em> to set results, overrides, or absent players.
                       </p>
-                    )}
+                    ) : null}
 
                     <div className="grid grid-cols-2 gap-2 mt-4">
                       <button

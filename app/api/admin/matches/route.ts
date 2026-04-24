@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
       include: {
         teamA: true,
         teamB: true,
+        formatOverride: true,
         players: { include: { player: true } },
       },
     });
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest) {
       teeSlotIndex?: number | null;
       teamAId?: string;
       teamBId?: string;
+      formatOverrideId?: string | null;
       players?: PlayerEntry[];
     };
 
@@ -56,6 +58,7 @@ export async function POST(request: NextRequest) {
         teeSlotIndex: body.teeSlotIndex ?? null,
         teamAId: body.teamAId,
         teamBId: body.teamBId,
+        formatOverrideId: body.formatOverrideId ?? null,
         players: {
           create:
             body.players?.map((p) => ({
@@ -64,7 +67,7 @@ export async function POST(request: NextRequest) {
             })) ?? [],
         },
       },
-      include: { players: { include: { player: true } }, teamA: true, teamB: true },
+      include: { players: { include: { player: true } }, teamA: true, teamB: true, formatOverride: true },
     });
 
     return NextResponse.json(match, { status: 201 });

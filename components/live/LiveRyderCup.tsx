@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { fmtPts } from '@/lib/utils';
 
 interface SidePlayer {
   name: string;
@@ -32,11 +33,6 @@ interface MatchRow {
   override?: { pointsA: number; pointsB: number; label: string | null } | null;
 }
 
-function formatPlayers(players: SidePlayer[]): string {
-  if (players.length === 0) return '—';
-  return players.map((p) => (p.absent ? `👻 ${p.name}` : p.name)).join(' & ');
-}
-
 interface Overview {
   teams: {
     1: { id: string; name: string; color: string } | null;
@@ -47,12 +43,9 @@ interface Overview {
   matches: MatchRow[];
 }
 
-function fmtPts(n: number): string {
-  if (n === 0) return '0';
-  const whole = Math.floor(n);
-  const frac = n - whole;
-  if (frac === 0.5) return whole === 0 ? '½' : `${whole}½`;
-  return String(n);
+function formatPlayers(players: SidePlayer[]): string {
+  if (players.length === 0) return '—';
+  return players.map((p) => (p.absent ? `👻 ${p.name}` : p.name)).join(' & ');
 }
 
 export default function LiveRyderCup() {
@@ -108,6 +101,44 @@ export default function LiveRyderCup() {
     };
   }, []);
 
+  const grouped = useMemo(() => {
+    if (!data) return { previous: [], current: [] as MatchRow[], currentRoundLabel: '' };
+    const byRound = new Map<string, { roundNumber: number; roundLabel: string; matches: MatchRow[] }>();
+    for (const m of data.matches) {
+      const g = byRound.get(m.roundId) ?? {
+        roundNumber: m.roundNumber,
+        roundLabel: m.roundLabel,
+        matches: [],
+      };
+      g.matches.push(m);
+      byRound.set(m.roundId, g);
+    }
+    const rounds = [...byRound.values()].sort((a, b) => a.roundNumber - b.roundNumber);
+
+    // Previous sessions: all matches final, at least one match existed.
+    const previous = rounds
+      .filter((r) => r.matches.length > 0 && r.matches.every((m) => m.final))
+      .map((r) => ({
+        roundNumber: r.roundNumber,
+        roundLabel: r.roundLabel,
+        a: r.matches.reduce((s, m) => s + m.points.a, 0),
+        b: r.matches.reduce((s, m) => s + m.points.b, 0),
+      }));
+
+    // Current session: the first round that is not fully final.
+    const currentRound = rounds.find(
+      (r) => r.matches.length > 0 && !r.matches.every((m) => m.final),
+    );
+
+    return {
+      previous,
+      current: currentRound?.matches ?? [],
+      currentRoundLabel: currentRound
+        ? `Round ${currentRound.roundNumber} · ${currentRound.roundLabel}`
+        : '',
+    };
+  }, [data]);
+
   if (loading) {
     return (
       <div className="min-h-[40vh] flex items-center justify-center">
@@ -121,74 +152,125 @@ export default function LiveRyderCup() {
 
   const teamA = data.teams[1];
   const teamB = data.teams[2];
-
-  const deltaA = data.projected.a - data.actual.a;
-  const deltaB = data.projected.b - data.actual.b;
+  const colorA = teamA?.color ?? '#C41E3A';
+  const colorB = teamB?.color ?? '#003DA5';
 
   return (
-    <div className="px-4 pt-4 space-y-5">
-      {/* Hero: actual score */}
-      <section className="rounded-3xl p-6 bg-gradient-to-br from-masters/10 via-white to-masters/5 shadow-card">
-        <p className="text-[10px] uppercase tracking-[0.25em] text-fg-3 text-center mb-3">Actual</p>
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-          <div className="text-center">
-            <div className="h-1.5 w-12 rounded-full mx-auto mb-2" style={{ backgroundColor: teamA?.color ?? '#C41E3A' }} />
-            <p className="text-xs uppercase tracking-wider font-semibold text-fg-2">{teamA?.name ?? 'Team A'}</p>
-            <p className="mt-2 text-7xl font-bold tracking-tighter tabular-nums text-fg-1">
-              {fmtPts(data.actual.a)}
-            </p>
-          </div>
-          <span className="text-fg-3 text-2xl font-light">–</span>
-          <div className="text-center">
-            <div className="h-1.5 w-12 rounded-full mx-auto mb-2" style={{ backgroundColor: teamB?.color ?? '#003DA5' }} />
-            <p className="text-xs uppercase tracking-wider font-semibold text-fg-2">{teamB?.name ?? 'Team B'}</p>
-            <p className="mt-2 text-7xl font-bold tracking-tighter tabular-nums text-fg-1">
-              {fmtPts(data.actual.b)}
-            </p>
-          </div>
+    <div className="px-4 pt-3 pb-4 space-y-3">
+      {/* Hero: actual + projected side-by-side */}
+      <section className="rounded-3xl px-4 py-3 bg-gradient-to-br from-masters/10 via-white to-masters/5 shadow-card">
+        <div className="grid grid-cols-2 gap-3">
+          <ScoreBlock
+            label="Actual"
+            a={data.actual.a}
+            b={data.actual.b}
+            colorA={colorA}
+            colorB={colorB}
+            teamAName={teamA?.name ?? 'A'}
+            teamBName={teamB?.name ?? 'B'}
+            emphasize
+          />
+          <ScoreBlock
+            label="Projected"
+            a={data.projected.a}
+            b={data.projected.b}
+            colorA={colorA}
+            colorB={colorB}
+            teamAName={teamA?.name ?? 'A'}
+            teamBName={teamB?.name ?? 'B'}
+          />
         </div>
       </section>
 
-      {/* Matchups */}
-      <section>
-        <h2 className="text-[10px] uppercase tracking-widest text-fg-3 mb-2 px-1">Matchups</h2>
-        <div className="space-y-2">
-          {data.matches.length === 0 ? (
-            <div className="bg-ink-2 border border-ink-3 rounded-2xl p-4 text-sm text-fg-3">
-              No matches configured yet.
-            </div>
-          ) : (
-            data.matches.map((m) => <MatchupRow key={m.id} m={m} />)
-          )}
-        </div>
-      </section>
+      {/* Previous sessions — condensed rollup */}
+      {grouped.previous.length > 0 ? (
+        <section>
+          <h2 className="text-[10px] uppercase tracking-widest text-fg-3 mb-1.5 px-1">
+            Previous sessions
+          </h2>
+          <div className="rounded-xl border border-ink-3 bg-white divide-y divide-ink-3/60">
+            {grouped.previous.map((p) => (
+              <div key={p.roundNumber} className="flex items-center justify-between px-3 py-2">
+                <p className="text-xs text-fg-2 truncate">
+                  <span className="font-semibold text-fg-1">R{p.roundNumber}</span> · {p.roundLabel}
+                </p>
+                <p className="font-mono text-xs tabular-nums text-fg-1 shrink-0">
+                  <span style={{ color: colorA }}>{fmtPts(p.a)}</span>
+                  <span className="text-fg-3"> – </span>
+                  <span style={{ color: colorB }}>{fmtPts(p.b)}</span>
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
-      {/* Projected */}
-      <section className="bg-white rounded-2xl p-4 shadow-elev border border-ink-3">
-        <p className="text-[10px] uppercase tracking-widest text-fg-3 mb-3">Projected if called now</p>
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-          <ProjectedSide name={teamA?.name ?? 'Team A'} color={teamA?.color ?? '#C41E3A'} score={data.projected.a} delta={deltaA} />
-          <span className="text-fg-3 text-lg font-light">–</span>
-          <ProjectedSide name={teamB?.name ?? 'Team B'} color={teamB?.color ?? '#003DA5'} score={data.projected.b} delta={deltaB} align="right" />
+      {/* Current session matches */}
+      {grouped.current.length > 0 ? (
+        <section>
+          <h2 className="text-[10px] uppercase tracking-widest text-fg-3 mb-1.5 px-1">
+            {grouped.currentRoundLabel}
+          </h2>
+          <div className="space-y-2">
+            {grouped.current.map((m) => (
+              <MatchupRow key={m.id} m={m} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {data.matches.length === 0 ? (
+        <div className="bg-ink-2 border border-ink-3 rounded-2xl p-4 text-sm text-fg-3">
+          No matches configured yet.
         </div>
-      </section>
+      ) : null}
     </div>
   );
 }
 
-function ProjectedSide({ name, color, score, delta, align = 'left' }: { name: string; color: string; score: number; delta: number; align?: 'left' | 'right' }) {
+function ScoreBlock({
+  label,
+  a,
+  b,
+  colorA,
+  colorB,
+  teamAName,
+  teamBName,
+  emphasize = false,
+}: {
+  label: string;
+  a: number;
+  b: number;
+  colorA: string;
+  colorB: string;
+  teamAName: string;
+  teamBName: string;
+  emphasize?: boolean;
+}) {
   return (
-    <div className={align === 'right' ? 'text-right' : ''}>
-      <p className="text-[10px] uppercase tracking-wider text-fg-3">{name}</p>
-      <p className="mt-1 text-4xl font-bold tracking-tighter tabular-nums text-fg-1">{fmtPts(score)}</p>
-      {delta > 0 ? (
-        <span
-          className="inline-block mt-1 text-[10px] font-semibold bg-masters/10 text-masters px-2 py-0.5 rounded-full"
-          style={{ backgroundColor: `${color}15`, color }}
-        >
-          +{fmtPts(delta)} in play
-        </span>
-      ) : null}
+    <div className="text-center">
+      <p className="text-[9px] uppercase tracking-[0.2em] text-fg-3 mb-1">{label}</p>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
+        <div>
+          <p
+            className={`${emphasize ? 'text-4xl' : 'text-3xl'} font-bold tabular-nums leading-none`}
+            style={{ color: colorA }}
+          >
+            {fmtPts(a)}
+          </p>
+          <p className="text-[9px] uppercase tracking-wider text-fg-3 mt-1 truncate">{teamAName}</p>
+        </div>
+        <span className="text-fg-3 text-base font-light">–</span>
+        <div>
+          <p
+            className={`${emphasize ? 'text-4xl' : 'text-3xl'} font-bold tabular-nums leading-none`}
+            style={{ color: colorB }}
+          >
+            {fmtPts(b)}
+          </p>
+          <p className="text-[9px] uppercase tracking-wider text-fg-3 mt-1 truncate">{teamBName}</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -199,60 +281,40 @@ function MatchupRow({ m }: { m: MatchRow }) {
     ? m.override!.pointsA > m.override!.pointsB
       ? 'A'
       : m.override!.pointsB > m.override!.pointsA
-      ? 'B'
-      : null
+        ? 'B'
+        : null
     : m.upBy > 0
-    ? 'A'
-    : m.upBy < 0
-    ? 'B'
-    : null;
+      ? 'A'
+      : m.upBy < 0
+        ? 'B'
+        : null;
   const leaderColor = leading === 'A' ? m.sideA.color : leading === 'B' ? m.sideB.color : '#E5E7EB';
 
   return (
-    <div
-      className="rounded-2xl p-3 bg-white shadow-card border border-ink-3 flex items-stretch gap-3"
-    >
+    <div className="rounded-xl p-2.5 bg-white shadow-card border border-ink-3 flex items-stretch gap-2.5">
       <div className="w-1 rounded-full flex-shrink-0" style={{ backgroundColor: leaderColor }} />
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2 mb-1.5">
-          <p className="text-[10px] uppercase tracking-widest text-fg-3">
-            R{m.roundNumber} · M{m.matchNumber} · {m.teeTime}
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <p className="text-[10px] uppercase tracking-wider text-fg-3 truncate">
+            M{m.matchNumber} · {m.teeTime}
           </p>
-          <div className="flex items-center gap-1">
-            {isOverride ? (
-              <span className="text-[10px] font-semibold rounded-full px-2 py-0.5 bg-warning/10 text-warning">
-                ADMIN CALL
-              </span>
-            ) : null}
-            <span
-              className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${
-                m.final ? 'bg-masters/10 text-masters' : 'bg-ink-2 text-fg-1'
-              }`}
-            >
-              {m.status}
-            </span>
-          </div>
+          <span
+            className={`text-[10px] font-semibold rounded-full px-2 py-0.5 shrink-0 ${
+              m.final ? 'bg-masters/10 text-masters' : 'bg-ink-2 text-fg-1'
+            }`}
+          >
+            {m.status}
+          </span>
         </div>
-        <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
-          <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-wider font-semibold truncate" style={{ color: m.sideA.color }}>
-              {m.sideA.label}
-            </p>
-            <p className="text-xs text-fg-2 truncate">{formatPlayers(m.sideA.players)}</p>
-          </div>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-2 items-center">
+          <p className="text-xs text-fg-2 truncate" style={{ color: m.sideA.color }}>
+            {formatPlayers(m.sideA.players)}
+          </p>
           <span className="text-fg-3 text-[10px]">vs</span>
-          <div className="min-w-0 text-right">
-            <p className="text-[10px] uppercase tracking-wider font-semibold truncate" style={{ color: m.sideB.color }}>
-              {m.sideB.label}
-            </p>
-            <p className="text-xs text-fg-2 truncate">{formatPlayers(m.sideB.players)}</p>
-          </div>
-        </div>
-        {m.final ? (
-          <p className="text-[10px] font-mono text-fg-2 text-center mt-1.5">
-            {fmtPts(m.points.a)} – {fmtPts(m.points.b)}
+          <p className="text-xs text-fg-2 truncate text-right" style={{ color: m.sideB.color }}>
+            {formatPlayers(m.sideB.players)}
           </p>
-        ) : null}
+        </div>
       </div>
     </div>
   );

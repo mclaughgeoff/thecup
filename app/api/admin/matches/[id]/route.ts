@@ -19,14 +19,16 @@ export async function PUT(
       result?: string | null;
       pointsA?: number | null;
       pointsB?: number | null;
+      formatOverrideId?: string | null;
     };
 
     const data: Record<string, unknown> = {};
-    if (body.matchNumber !== undefined) data.matchNumber = body.matchNumber;
-    if (body.teeSlotIndex !== undefined) data.teeSlotIndex = body.teeSlotIndex;
-    if (body.result !== undefined)      data.result = body.result || null;
-    if (body.pointsA !== undefined)     data.pointsA = body.pointsA;
-    if (body.pointsB !== undefined)     data.pointsB = body.pointsB;
+    if (body.matchNumber !== undefined)      data.matchNumber = body.matchNumber;
+    if (body.teeSlotIndex !== undefined)     data.teeSlotIndex = body.teeSlotIndex;
+    if (body.result !== undefined)           data.result = body.result || null;
+    if (body.pointsA !== undefined)          data.pointsA = body.pointsA;
+    if (body.pointsB !== undefined)          data.pointsB = body.pointsB;
+    if (body.formatOverrideId !== undefined) data.formatOverrideId = body.formatOverrideId;
 
     const match = await prisma.$transaction(async (tx) => {
       const updated = await tx.match.update({

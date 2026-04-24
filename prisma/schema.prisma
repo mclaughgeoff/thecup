@@ -177,6 +177,11 @@ model Match {
   teamBId     String
   teamB       RyderCupTeam @relation("sideB", fields: [teamBId], references: [id])
 
+  // Admin override: format for this specific match (e.g. scramble for the high-hcp
+  // group in an otherwise Four-Ball round). Null = inherit round.formatRef.
+  formatOverrideId String?
+  formatOverride   Format? @relation("MatchFormatOverride", fields: [formatOverrideId], references: [id], onDelete: SetNull)
+
   // The actual players in this match (subset of team rosters)
   players     MatchPlayer[]
 
@@ -278,6 +283,7 @@ model Format {
   stablefordConfig Json?
 
   rounds           Round[]
+  matchOverrides   Match[]  @relation("MatchFormatOverride")
 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
