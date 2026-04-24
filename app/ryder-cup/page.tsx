@@ -16,7 +16,7 @@ import {
   type ScoreRow,
   type Side,
 } from '@/lib/scoring';
-import { fmtPts } from '@/lib/utils';
+import { fmtPts, isWithinTeeTimeWindow } from '@/lib/utils';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -209,12 +209,18 @@ export default async function RyderCupPage() {
       }
     }
 
+    // Only flag a session "Live" once we're within 30 minutes of its earliest
+    // tee time (or past it). A pre-entered score on an upcoming day shouldn't
+    // turn the whole session green.
+    const earliestTee = round.teeSlots?.[0] ?? round.teeTime ?? null;
+    const withinWindow = isWithinTeeTimeWindow(round.date, earliestTee);
+
     const status: SessionStatus =
       computed.length === 0
         ? 'upcoming'
         : allFinal
           ? 'final'
-          : anyInProgress
+          : anyInProgress && withinWindow
             ? 'live'
             : 'upcoming';
 
