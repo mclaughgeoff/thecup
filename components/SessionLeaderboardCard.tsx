@@ -2,7 +2,6 @@
 
 import { useState, type ReactNode } from 'react';
 import clsx from 'clsx';
-import SectionCard from './SectionCard';
 import { ChevronDownIcon } from './icons';
 import { fmtPts } from '@/lib/utils';
 
@@ -53,42 +52,78 @@ export default function SessionLeaderboardCard({
 
   const hasPoints = sessionPointsA != null && sessionPointsB != null;
 
+  // Winner determination for completed sessions colors the left accent bar.
+  const winner: 'A' | 'B' | 'draw' | null =
+    status === 'final' && hasPoints
+      ? sessionPointsA! > sessionPointsB!
+        ? 'A'
+        : sessionPointsB! > sessionPointsA!
+          ? 'B'
+          : 'draw'
+      : null;
+
+  const accentColor =
+    status === 'live'
+      ? '#10B981' // live-500
+      : status === 'upcoming'
+        ? '#D1D5DB' // ink-3
+        : winner === 'A'
+          ? teamAColor
+          : winner === 'B'
+            ? teamBColor
+            : '#9CA3AF'; // draw / fg-3
+
   return (
-    <SectionCard
-      as="section"
-      tone={status === 'live' ? 'masters' : 'default'}
+    <section
       className={clsx(
-        '!p-0 overflow-hidden',
-        status === 'live' && 'border-l-4 border-l-masters',
-        status === 'upcoming' && 'border-dashed bg-cream-light/40',
+        'relative bg-white rounded-[14px] border border-ink-3 overflow-hidden transition-all duration-200',
+        status === 'live' && 'shadow-elev',
+        status === 'upcoming' && 'opacity-90',
+        status !== 'upcoming' && 'shadow-card',
       )}
     >
+      {/* Colored left accent bar */}
+      <span
+        aria-hidden="true"
+        className={clsx(
+          'absolute left-0 top-0 bottom-0 w-1.5',
+          status === 'live' && 'animate-live-glow',
+        )}
+        style={{ backgroundColor: accentColor }}
+      />
+
       <button
         type="button"
         aria-expanded={open}
         aria-controls={bodyId}
         onClick={() => setOpen((o) => !o)}
-        className="w-full text-left p-4 tap-highlight-none active:bg-ink-2/40 transition-colors"
+        className="w-full text-left pl-5 pr-4 py-4 tap-highlight-none active:bg-ink-2/40 transition-colors"
       >
+        {/* Top row: round chip + title + status pill */}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] uppercase tracking-widest text-fg-3">
+            <span className="inline-block text-[10px] font-semibold uppercase tracking-widest bg-ink-2 text-fg-2 px-2 py-0.5 rounded-full">
               Round {roundNumber} · {dayOfWeek}
-            </p>
-            <h2 className="text-base font-semibold mt-0.5 truncate">{course}</h2>
-            <p className="text-xs text-fg-3 mt-0.5">{format}</p>
-          </div>
-          <div className="flex flex-col items-end gap-1.5 shrink-0">
-            <span
+            </span>
+            <h2
               className={clsx(
-                'pill',
-                status === 'final' && 'border-ink-3 text-fg-2',
-                status === 'live' && 'border-masters/60 text-masters-glow bg-masters/5',
-                status === 'upcoming' && 'border-ink-3 text-fg-3',
+                'text-[20px] leading-tight font-bold mt-2 truncate',
+                status === 'upcoming' ? 'text-fg-2' : 'text-fg-1',
               )}
             >
-              {STATUS_LABEL[status]}
-            </span>
+              {course}
+            </h2>
+            <p
+              className={clsx(
+                'text-[13px] font-medium mt-0.5 truncate',
+                status === 'upcoming' ? 'text-fg-3/80' : 'text-fg-3',
+              )}
+            >
+              {format}
+            </p>
+          </div>
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <StatusPill status={status} label={STATUS_LABEL[status]} />
             <ChevronDownIcon
               size={18}
               className={clsx('text-fg-3 transition-transform duration-200', open && 'rotate-180')}
@@ -96,52 +131,113 @@ export default function SessionLeaderboardCard({
           </div>
         </div>
 
-        {/* Session score + running total */}
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-ink-2 border border-ink-3 p-2">
-            <p className="text-[9px] uppercase tracking-widest text-fg-3">Session</p>
-            <div className="flex items-baseline justify-between mt-1 gap-2">
-              <span
-                className="text-lg font-bold font-mono tabular-nums"
-                style={{ color: teamAColor }}
-              >
-                {hasPoints ? fmtPts(sessionPointsA as number) : '—'}
-              </span>
-              <span className="text-fg-3 text-xs">–</span>
-              <span
-                className="text-lg font-bold font-mono tabular-nums"
-                style={{ color: teamBColor }}
-              >
-                {hasPoints ? fmtPts(sessionPointsB as number) : '—'}
-              </span>
-            </div>
+        {/* Single horizontal score strip: red — VS — blue, with Cup total underneath */}
+        <div className="mt-4">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+            <ScoreSide
+              value={hasPoints ? sessionPointsA! : null}
+              color={teamAColor}
+              align="right"
+              dim={status === 'upcoming'}
+            />
+            <span className="text-fg-3 text-[11px] font-semibold tracking-widest uppercase">
+              vs
+            </span>
+            <ScoreSide
+              value={hasPoints ? sessionPointsB! : null}
+              color={teamBColor}
+              align="left"
+              dim={status === 'upcoming'}
+            />
           </div>
-          <div className="rounded-xl bg-ink-2 border border-ink-3 p-2">
-            <p className="text-[9px] uppercase tracking-widest text-fg-3">Cup total</p>
-            <div className="flex items-baseline justify-between mt-1 gap-2">
-              <span
-                className="text-lg font-bold font-mono tabular-nums"
-                style={{ color: teamAColor }}
-              >
-                {fmtPts(cumulativeA)}
-              </span>
-              <span className="text-fg-3 text-xs">–</span>
-              <span
-                className="text-lg font-bold font-mono tabular-nums"
-                style={{ color: teamBColor }}
-              >
-                {fmtPts(cumulativeB)}
-              </span>
-            </div>
-          </div>
+          <p
+            className={clsx(
+              'text-center mt-1.5 text-[11px] font-medium uppercase tracking-widest',
+              status === 'upcoming' ? 'text-fg-3/70' : 'text-fg-3',
+            )}
+          >
+            Cup{' '}
+            <span className="font-mono tabular-nums" style={{ color: teamAColor }}>
+              {fmtPts(cumulativeA)}
+            </span>
+            <span className="text-fg-3"> – </span>
+            <span className="font-mono tabular-nums" style={{ color: teamBColor }}>
+              {fmtPts(cumulativeB)}
+            </span>
+          </p>
         </div>
       </button>
 
       {open ? (
-        <div id={bodyId} className="px-4 pb-4 pt-1 border-t border-ink-3/50">
+        <div
+          id={bodyId}
+          className="pl-5 pr-4 pb-4 pt-1 border-t border-ink-3/60 animate-fade-in"
+        >
           {children}
         </div>
       ) : null}
-    </SectionCard>
+    </section>
+  );
+}
+
+function StatusPill({ status, label }: { status: SessionStatus; label: string }) {
+  if (status === 'live') {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-live-50 text-live-600 border border-live-200">
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inset-0 rounded-full bg-live-500 animate-pulse-dot" />
+          <span className="relative h-2 w-2 rounded-full bg-live-500" />
+        </span>
+        {label}
+      </span>
+    );
+  }
+  if (status === 'upcoming') {
+    return (
+      <span className="inline-flex items-center text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-ink-2 text-fg-3 border border-ink-3">
+        {label}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-fg-1 text-white">
+      {label}
+    </span>
+  );
+}
+
+function ScoreSide({
+  value,
+  color,
+  align,
+  dim,
+}: {
+  value: number | null;
+  color: string;
+  align: 'left' | 'right';
+  dim?: boolean;
+}) {
+  if (value == null) {
+    return (
+      <div className={align === 'right' ? 'text-right' : 'text-left'}>
+        <span
+          aria-hidden="true"
+          className={clsx(
+            'inline-block h-1 w-8 rounded-full',
+            dim ? 'bg-ink-3/60' : 'bg-ink-3',
+          )}
+        />
+      </div>
+    );
+  }
+  return (
+    <div className={align === 'right' ? 'text-right' : 'text-left'}>
+      <span
+        className="text-[28px] font-bold font-mono tabular-nums leading-none"
+        style={{ color }}
+      >
+        {fmtPts(value)}
+      </span>
+    </div>
   );
 }

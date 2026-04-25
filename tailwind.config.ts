@@ -40,9 +40,42 @@ const config: Config = {
           DEFAULT: '#006747',
           muted:   '#0A8A5F',
         },
-        // Team colors — brand identities for the two Ryder Cup sides
-        teamA: '#C41E3A', // red
-        teamB: '#003DA5', // blue
+        // Team colors — brand identities for the two Ryder Cup sides.
+        // Static tokens are *defaults*; per-team colors stored in the DB
+        // override these via inline style.
+        teamA: '#C41E3A', // red (legacy alias, mirrors alpha.500)
+        teamB: '#003DA5', // blue (legacy alias, mirrors bravo.500)
+        alpha: {
+          50:  '#FEF2F4',
+          100: '#FCE0E5',
+          200: '#F5C2CB',
+          500: '#C41E3A',
+          600: '#A21830',
+          700: '#7F1226',
+        },
+        bravo: {
+          50:  '#F0F4FB',
+          100: '#DCE5F4',
+          200: '#B8C7E5',
+          500: '#003DA5',
+          600: '#003187',
+          700: '#002569',
+        },
+        // Live state — emerald, distinct from Masters brand green
+        live: {
+          50:  '#ECFDF5',
+          100: '#D1FAE5',
+          200: '#A7F3D0',
+          500: '#10B981',
+          600: '#059669',
+          glow: 'rgba(16,185,129,0.35)',
+        },
+        // Neutral draw/tie token for All Square
+        draw: {
+          50:  '#F5F5F7',
+          200: '#D1D5DB',
+          500: '#6B7280',
+        },
         // Format-as-color system — each match format gets a distinct pill color
         // so rounds are visually parseable at a glance.
         format: {
@@ -96,12 +129,18 @@ const config: Config = {
           '0%, 100%': { opacity: '1' },
           '50%':      { opacity: '0.35' },
         },
+        // Subtle emerald glow on a Live session's accent bar.
+        'live-glow': {
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(16,185,129,0.55)' },
+          '50%':      { boxShadow: '0 0 12px 2px rgba(16,185,129,0.45)' },
+        },
       },
       animation: {
         shimmer:    'shimmer 2s linear infinite',
         'slide-up': 'slide-up 250ms ease-out',
         'fade-in':  'fade-in 200ms ease-out',
         'pulse-dot':'pulse-dot 1.4s ease-in-out infinite',
+        'live-glow':'live-glow 2.4s ease-in-out infinite',
       },
     },
   },

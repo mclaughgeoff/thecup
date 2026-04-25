@@ -18,6 +18,7 @@ import {
 } from '@/lib/scoring';
 import { fmtPts, isWithinTeeTimeWindow } from '@/lib/utils';
 import Link from 'next/link';
+import clsx from 'clsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +35,8 @@ type MatchComputed = {
   final: boolean;
   hasAnyScores: boolean;
   statusLabel: string;
+  /** Match-play live leader: positive = A is up, negative = B is up. Null for non-match formats / no state. */
+  upBy: number | null;
 };
 
 export default async function RyderCupPage() {
@@ -189,6 +192,7 @@ export default async function RyderCupPage() {
         final: isFinal,
         hasAnyScores,
         statusLabel,
+        upBy: state?.matchStatus.upBy ?? null,
       } satisfies MatchComputed;
     });
 
@@ -247,45 +251,71 @@ export default async function RyderCupPage() {
   const cupA = cumulativeA;
   const cupB = cumulativeB;
 
+  // Progress segments: one per RC round, colored by who won (or in-progress / upcoming).
+  const progressSegments = sessions.map((s) => {
+    if (s.status === 'final' && s.sessionPointsA != null && s.sessionPointsB != null) {
+      if (s.sessionPointsA > s.sessionPointsB) return { kind: 'A' as const, color: teamAColor };
+      if (s.sessionPointsB > s.sessionPointsA) return { kind: 'B' as const, color: teamBColor };
+      return { kind: 'draw' as const, color: '#9CA3AF' };
+    }
+    if (s.status === 'live') return { kind: 'live' as const, color: '#10B981' };
+    return { kind: 'upcoming' as const, color: '#E5E7EB' };
+  });
+
   return (
     <>
       <AppHeader title="Ryder Cup" />
       <main className="bg-ink-0 pb-nav">
-        {/* Hero */}
-        <section className="px-4 pt-6">
-          <div className="card-elevated">
-            <p className="text-[10px] uppercase tracking-[0.25em] text-fg-3 text-center mb-4">
+        {/* Scoreboard hero — extends the dark-green band downward from the header */}
+        <section className="bg-hero-green text-cream relative">
+          <div className="px-4 pt-6 pb-7">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-cream/70 text-center mb-5">
               Cup total
             </p>
-            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-              <div className="text-center">
-                <div className="h-1.5 w-12 rounded-full mx-auto mb-3" style={{ backgroundColor: teamAColor }} />
-                <p className="text-xs uppercase tracking-wider text-fg-2 font-semibold">
-                  {teamA?.name ?? 'Team A'}
-                </p>
-                <p className="mt-2 text-6xl md:text-7xl font-bold tracking-tighter tabular-nums">
-                  {fmtPts(cupA)}
-                </p>
-              </div>
-              <span className="text-fg-3 text-2xl font-light">–</span>
-              <div className="text-center">
-                <div className="h-1.5 w-12 rounded-full mx-auto mb-3" style={{ backgroundColor: teamBColor }} />
-                <p className="text-xs uppercase tracking-wider text-fg-2 font-semibold">
-                  {teamB?.name ?? 'Team B'}
-                </p>
-                <p className="mt-2 text-6xl md:text-7xl font-bold tracking-tighter tabular-nums">
-                  {fmtPts(cupB)}
-                </p>
-              </div>
-            </div>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-fg-3 text-center mt-4">
-              {finalSessions}/{totalSessions} sessions played
-            </p>
-          </div>
 
+            <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-4">
+              <ScoreboardSide
+                color={teamAColor}
+                name={teamA?.name ?? 'Team A'}
+                value={cupA}
+              />
+              <span className="text-cream/50 text-2xl font-light pb-3">–</span>
+              <ScoreboardSide
+                color={teamBColor}
+                name={teamB?.name ?? 'Team B'}
+                value={cupB}
+              />
+            </div>
+
+            {/* Progress segments */}
+            <div className="mt-6">
+              <div
+                className="flex gap-1"
+                role="img"
+                aria-label={`${finalSessions} of ${totalSessions} sessions played`}
+              >
+                {progressSegments.map((seg, i) => (
+                  <span
+                    key={i}
+                    className={clsx(
+                      'flex-1 h-1.5 rounded-full transition-colors',
+                      seg.kind === 'live' && 'animate-pulse-dot',
+                    )}
+                    style={{ backgroundColor: seg.color }}
+                  />
+                ))}
+              </div>
+              <p className="mt-2 text-[10px] uppercase tracking-[0.25em] text-cream/70 text-center">
+                {finalSessions}/{totalSessions} sessions played
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="px-4 pt-4">
           <Link
             href="/ryder-cup/teams"
-            className="mt-3 card flex items-center justify-between hover:border-fg-3 transition tap-highlight-none"
+            className="card flex items-center justify-between hover:border-fg-3 transition tap-highlight-none"
           >
             <div className="flex items-center gap-3">
               <span className="w-8 h-8 rounded-lg bg-ink-2 border border-ink-3 flex items-center justify-center text-fg-2">
@@ -334,6 +364,7 @@ export default async function RyderCupPage() {
                           matchNumber={m.matchNumber}
                           teeTime={m.teeTime}
                           formatLabel={m.overrideFormatLabel}
+                          upBy={m.upBy}
                           sideA={m.sideA}
                           sideB={m.sideB}
                           pointsA={m.pointsA}
@@ -352,5 +383,32 @@ export default async function RyderCupPage() {
       </main>
       <BottomTabBar isAdmin={player?.isAdmin} />
     </>
+  );
+}
+
+function ScoreboardSide({
+  color,
+  name,
+  value,
+}: {
+  color: string;
+  name: string;
+  value: number;
+}) {
+  return (
+    <div className="text-center min-w-0">
+      {/* Thick team color bar */}
+      <span
+        aria-hidden="true"
+        className="block h-2 w-14 rounded-full mx-auto mb-3"
+        style={{ backgroundColor: color }}
+      />
+      <p className="text-[11px] uppercase tracking-[0.2em] font-semibold text-cream/80 truncate">
+        {name}
+      </p>
+      <p className="mt-2 text-[56px] leading-none font-mono font-extrabold tabular-nums text-cream">
+        {fmtPts(value)}
+      </p>
+    </div>
   );
 }
